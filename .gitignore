@@ -70,3 +70,6 @@ coverage/
 Thumbs.db
 *.swp
 *~
+
+# Local working notes — deliberately not published.
+VERIFICATION.md
