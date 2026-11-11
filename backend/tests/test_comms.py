@@ -127,3 +127,101 @@ def test_posting_a_message_over_http_is_validated(api, conversation, memberships
     )
     assert response.status_code == 400
     assert conversation.messages.count() == 0
+
+
+# ---------------------------------------------------------------------------
+# WebSocket fan-out
+# ---------------------------------------------------------------------------
+#
+# The consumer and the WebSocket transport are exercised against a live ASGI
+# server by `tools/ws_e2e.py`. What belongs in the fast suite is the link that
+# was actually missing: a message written over REST must be handed to the
+# channel layer, or every subscribed socket stays silent.
+
+from asgiref.sync import async_to_sync  # noqa: E402
+from channels.layers import get_channel_layer  # noqa: E402
+from channels.testing import WebsocketCommunicator  # noqa: E402
+
+
+@pytest.mark.django_db(transaction=True)
+def test_posting_a_message_broadcasts_to_the_conversation_room(conversation, memberships):
+    """Regression: `post_message` used to save the row and say nothing.
+
+    Sockets connected and authenticated correctly, then received nothing until
+    the client polled. A member had no way to know a message had arrived.
+    """
+    import asyncio
+
+    layer = get_channel_layer()
+    room = f"conversation.{conversation.pk}"
+
+    async def bounded_receive(channel) -> dict | None:
+        """Wait briefly for a frame.
+
+        A plain `receive()` blocks forever when nothing was broadcast, which
+        turns a regression into a hung suite instead of a red test.
+        """
+        try:
+            return await asyncio.wait_for(layer.receive(channel), timeout=3)
+        except asyncio.TimeoutError:
+            return None
+
+    channel = async_to_sync(layer.new_channel)()
+    async_to_sync(layer.group_add)(room, channel)
+    try:
+        # transaction=True, so on_commit fires for real when post_message commits.
+        message = comms.post_message(
+            actor=memberships["a"].user, conversation=conversation, body="Paying on Friday",
+        )
+        event = async_to_sync(bounded_receive)(channel)
+        assert event is not None, "the channel layer received nothing"
+        assert event["event"] == "message"
+        assert event["message"]["id"] == str(message.pk)
+        assert event["message"]["body"] == "Paying on Friday"
+        assert event["message"]["sender_id"] == str(memberships["a"].user_id)
+    finally:
+        async_to_sync(layer.group_discard)(room, channel)
+        async_to_sync(layer.flush)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_the_consumer_refuses_a_socket_without_a_user(conversation):
+    """An anonymous connection is closed before any room is joined."""
+    from apps.comms.consumers import ConversationConsumer
+    from django.contrib.auth.models import AnonymousUser
+
+    async def scenario() -> bool:
+        communicator = WebsocketCommunicator(
+            ConversationConsumer.as_asgi(), f"/ws/conversations/{conversation.pk}/",
+        )
+        communicator.scope["user"] = AnonymousUser()
+        communicator.scope["url_route"] = {"kwargs": {"conversation_id": conversation.pk}}
+        connected, _ = await communicator.connect()
+        if connected:
+            await communicator.disconnect()
+        return connected
+
+    assert async_to_sync(scenario)() is False
+
+
+@pytest.mark.django_db(transaction=True)
+def test_the_consumer_admits_a_member_and_refuses_a_stranger(conversation, memberships, outsider):
+    """Authorisation goes through the same service the REST history endpoint uses."""
+    from apps.comms.consumers import ConversationConsumer
+
+    def connect_as(user) -> bool:
+        async def scenario() -> bool:
+            communicator = WebsocketCommunicator(
+                ConversationConsumer.as_asgi(), f"/ws/conversations/{conversation.pk}/",
+            )
+            communicator.scope["user"] = user
+            communicator.scope["url_route"] = {"kwargs": {"conversation_id": conversation.pk}}
+            connected, _ = await communicator.connect()
+            if connected:
+                await communicator.disconnect()
+            return connected
+
+        return async_to_sync(scenario)()
+
+    assert connect_as(memberships["a"].user) is True
+    assert connect_as(outsider) is False

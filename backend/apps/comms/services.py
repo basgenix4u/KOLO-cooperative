@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import logging
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
@@ -52,7 +54,39 @@ def post_message(*, actor, conversation: Conversation, body: str, kind: str = Me
     with transaction.atomic():
         message = Message.objects.create(conversation=conversation, sender=actor, body=text, kind=kind)
         Participant.objects.filter(conversation=conversation, user=actor).update(last_read_at=timezone.now())
+        # Broadcast after the row is committed, so a subscriber never receives a
+        # message that a rollback then removes. Without this the sockets accepted
+        # connections and stayed silent: every member would have had to poll.
+        transaction.on_commit(lambda: _broadcast_message(conversation, message))
     return message
+
+
+def _broadcast_message(conversation: Conversation, message: Message) -> None:
+    """Push a new message to everyone connected to the conversation's room."""
+    layer = get_channel_layer()
+    if layer is None:
+        logger.info('{"event":"chat_broadcast_skipped","reason":"no channel layer"}')
+        return
+    payload = {
+        "event": "message",
+        "conversation_id": str(conversation.pk),
+        "message": {
+            "id": str(message.pk),
+            "body": message.body,
+            "kind": message.kind,
+            "sender_id": str(message.sender_id),
+            "sender_name": message.sender.display_name if message.sender_id else "",
+            "created_at": message.created_at.isoformat(),
+        },
+    }
+    try:
+        async_to_sync(layer.group_send)(
+            f"conversation.{conversation.pk}", {"type": "chat.event", **payload}
+        )
+    except Exception as exc:  # noqa: BLE001 - delivery is best effort, the row is already saved
+        # A chat message that is stored but not pushed is still readable over
+        # HTTP; losing it entirely would be worse.
+        logger.warning('{"event":"chat_broadcast_failed","reason":%r}', str(exc))
 
 
 def mark_read(*, actor, conversation: Conversation, message_id=None) -> int:
