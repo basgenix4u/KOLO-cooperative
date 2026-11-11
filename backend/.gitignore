@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+*.py[cod]
+__pycache__/
+.venv/
+.pytest_cache/
+staticfiles/
+media/

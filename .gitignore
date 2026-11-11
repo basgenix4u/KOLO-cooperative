@@ -1,0 +1,72 @@
+# --- Secrets and environment ---------------------------------------------
+# Never commit credentials. .env holds dev-only values, but it is still a file
+# that will one day hold something real, so it stays out of history entirely.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keystore
+*.jks
+key.properties
+serviceAccountKey.json
+google-services.json
+GoogleService-Info.plist
+
+# --- Python / Django -----------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+staticfiles/
+media/
+*.sqlite3
+db.sqlite3
+celerybeat-schedule*
+
+# --- Flutter / Dart ------------------------------------------------------
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.iml
+.idea/
+.vscode/
+android/.gradle/
+android/local.properties
+android/app/debug/
+android/app/profile/
+android/app/release/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/ephemeral/
+macos/Pods/
+*.g.dart.lock
+
+# --- Node / web ----------------------------------------------------------
+node_modules/
+.npm/
+dist/
+coverage/
+*.log
+
+# --- OS / editor ---------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*~

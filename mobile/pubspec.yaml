@@ -1,0 +1,37 @@
+name: kolo
+description: "KOLO — savings groups, made trustworthy."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State and routing: deliberately small. This app has one job per screen.
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.7
+
+  # HTTP, storage and secure token handling.
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.2
+
+  # Intl for money formatting; every amount is integer minor units.
+  intl: ^0.19.0
+
+  # Charts on the group dashboard.
+  fl_chart: ^0.69.0
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
