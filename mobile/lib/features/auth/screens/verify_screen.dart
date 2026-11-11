@@ -75,6 +75,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
@@ -97,10 +98,10 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: KoloColors.dangerSoft,
+                    color: palette.dangerSoft,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(_error!, style: const TextStyle(color: KoloColors.danger)),
+                  child: Text(_error!, style: TextStyle(color: palette.danger)),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -109,10 +110,10 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: KoloColors.successSoft,
+                    color: palette.successSoft,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(_notice!, style: const TextStyle(color: KoloColors.success)),
+                  child: Text(_notice!, style: TextStyle(color: palette.success)),
                 ),
                 const SizedBox(height: 16),
               ],

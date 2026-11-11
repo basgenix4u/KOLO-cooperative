@@ -95,7 +95,9 @@ class GroupDetailScreen extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (context) => Padding(
+      builder: (context) {
+        final palette = context.kolo;
+        return Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -113,19 +115,19 @@ class GroupDetailScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: KoloColors.amberSoft,
+                color: palette.moneySoft,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.shield_outlined, size: 18, color: KoloColors.warning),
+                  Icon(Icons.shield_outlined, size: 18, color: palette.warning),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'A payout needs two different officers: one to approve it, another to '
                       'execute it. The person receiving it cannot approve or execute it.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: KoloColors.ink),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: palette.text),
                     ),
                   ),
                 ],
@@ -133,7 +135,8 @@ class GroupDetailScreen extends ConsumerWidget {
             ),
           ],
         ),
-      ),
+        );
+      },
     );
   }
 }
@@ -145,12 +148,13 @@ class _GroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: KoloColors.white,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: KoloColors.divider),
+        border: Border.all(color: palette.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,14 +165,14 @@ class _GroupHeader extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: KoloColors.indigo,
+                  color: palette.accent,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Center(
                   child: Text(
                     group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G',
-                    style: const TextStyle(
-                      color: KoloColors.white,
+                    style: TextStyle(
+                      color: palette.surface,
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
                     ),
@@ -187,7 +191,7 @@ class _GroupHeader extends StatelessWidget {
                         StatusPill(status: group.myRole, label: 'You: ${humanise(group.myRole)}'),
                         const SizedBox(width: 8),
                         if (group.isPrivate)
-                          const Icon(Icons.lock_outline, size: 14, color: KoloColors.inkFaint),
+                          Icon(Icons.lock_outline, size: 14, color: palette.textFaint),
                       ],
                     ),
                   ],
@@ -239,6 +243,7 @@ class _ProgrammeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     final target = programme.target.minor > 0 ? programme.target : programme.expected;
     final percent = target.minor > 0
         ? (programme.collected.minor / target.minor * 100).clamp(0, 100).toDouble()
@@ -274,7 +279,7 @@ class _ProgrammeTile extends StatelessWidget {
                 Text(
                   '${programme.collected.format()} collected',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: KoloColors.inkSoft,
+                        color: palette.textSoft,
                         fontWeight: FontWeight.w600,
                       ),
                 ),

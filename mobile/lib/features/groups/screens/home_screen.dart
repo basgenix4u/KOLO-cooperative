@@ -13,6 +13,7 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.kolo;
     final session = ref.watch(sessionProvider);
     final groups = ref.watch(myGroupsProvider);
     final obligations = ref.watch(myObligationsProvider);
@@ -57,10 +58,10 @@ class HomeScreen extends ConsumerWidget {
                       ),
                       IconButton(
                         onPressed: () => context.push('/profile'),
-                        icon: const CircleAvatar(
+                        icon: CircleAvatar(
                           radius: 16,
-                          backgroundColor: KoloColors.indigo,
-                          child: Icon(Icons.person_outline, size: 18, color: KoloColors.white),
+                          backgroundColor: palette.accent,
+                          child: Icon(Icons.person_outline, size: 18, color: palette.surface),
                         ),
                         tooltip: 'Profile',
                       ),
@@ -149,8 +150,8 @@ class HomeScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/groups/new'),
-        backgroundColor: KoloColors.indigo,
-        foregroundColor: KoloColors.white,
+        backgroundColor: palette.accent,
+        foregroundColor: palette.surface,
         icon: const Icon(Icons.add),
         label: const Text('New group'),
       ),
@@ -176,13 +177,14 @@ class _DueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     final total = obligations.fold<int>(0, (sum, item) => sum + item.outstanding.minor);
     final currency = obligations.first.outstanding.currency;
     final overdue = obligations.where((o) => o.isOverdue).length;
 
     return Container(
       decoration: BoxDecoration(
-        color: KoloColors.indigo,
+        color: palette.accent,
         borderRadius: BorderRadius.circular(20),
       ),
       padding: const EdgeInsets.all(20),
@@ -245,6 +247,7 @@ class _GroupTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return KoloCard(
       onTap: () => context.push('/groups/${group.slug}'),
       child: Row(
@@ -253,16 +256,16 @@ class _GroupTile extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: KoloColors.cloud,
+              color: palette.ground,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
               child: Text(
                 group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: KoloColors.indigo,
+                  color: palette.accent,
                 ),
               ),
             ),
@@ -283,7 +286,7 @@ class _GroupTile extends StatelessWidget {
                     ),
                     if (group.isPrivate) ...[
                       const SizedBox(width: 6),
-                      const Icon(Icons.lock_outline, size: 14, color: KoloColors.inkFaint),
+                      Icon(Icons.lock_outline, size: 14, color: palette.textFaint),
                     ],
                   ],
                 ),
@@ -296,7 +299,7 @@ class _GroupTile extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded, color: KoloColors.inkFaint),
+          Icon(Icons.chevron_right_rounded, color: palette.textFaint),
         ],
       ),
     );

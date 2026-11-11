@@ -55,6 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
@@ -136,12 +137,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: KoloColors.cloud,
+                    color: palette.ground,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.science_outlined, size: 18, color: KoloColors.inkFaint),
+                      Icon(Icons.science_outlined, size: 18, color: palette.textFaint),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(

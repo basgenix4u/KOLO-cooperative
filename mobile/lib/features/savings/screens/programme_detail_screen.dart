@@ -17,6 +17,7 @@ class ProgrammeDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.kolo;
     final programme = ref.watch(programmeProvider(programmeId));
     final cycles = ref.watch(programmeCyclesProvider(programmeId));
 
@@ -70,7 +71,7 @@ class ProgrammeDetailScreen extends ConsumerWidget {
                   : Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: KoloColors.cloud,
+                        color: palette.ground,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -96,12 +97,13 @@ class _ProgrammeSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: KoloColors.white,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: KoloColors.divider),
+        border: Border.all(color: palette.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,7 +119,7 @@ class _ProgrammeSummary extends StatelessWidget {
           const SizedBox(height: 18),
           Text('Collected so far', style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 4),
-          Text(programme.collected.format(), style: KoloTheme.moneyLarge),
+          Text(programme.collected.format(), style: KoloTheme.moneyLarge(context.kolo.text)),
           const SizedBox(height: 6),
           Text(
             'of ${(programme.target.minor > 0 ? programme.target : programme.expected).format()} expected',
@@ -136,13 +138,13 @@ class _ProgrammeSummary extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: KoloColors.cloud,
+              color: palette.ground,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.verified_outlined, size: 16, color: KoloColors.inkFaint),
+                Icon(Icons.verified_outlined, size: 16, color: palette.textFaint),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -201,6 +203,7 @@ class _CycleCardState extends ConsumerState<_CycleCard> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     final cycle = widget.cycle;
     final percent = cycle.payoutAmount.minor > 0
         ? (cycle.collectedTotal.minor / cycle.payoutAmount.minor * 100).clamp(0, 100).toDouble()
@@ -229,7 +232,7 @@ class _CycleCardState extends ConsumerState<_CycleCard> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(cycle.collectedTotal.format(), style: KoloTheme.moneyMedium),
+                Text(cycle.collectedTotal.format(), style: KoloTheme.moneyMedium(context.kolo.text)),
                 Text(
                   'of ${cycle.payoutAmount.format()}',
                   style: Theme.of(context).textTheme.bodySmall,
@@ -243,24 +246,24 @@ class _CycleCardState extends ConsumerState<_CycleCard> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: KoloColors.amberSoft,
+                  color: palette.moneySoft,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${cycle.shortfall.format()} still to collect before this payout can be made. '
                   'KOLO will not pay out money the group has not received.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: KoloColors.ink),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: palette.text),
                 ),
               ),
             if (cycle.isPaid)
               Row(
                 children: [
-                  const Icon(Icons.check_circle_outline, size: 16, color: KoloColors.success),
+                  Icon(Icons.check_circle_outline, size: 16, color: palette.success),
                   const SizedBox(width: 6),
                   Text(
                     'Paid${cycle.paidAt != null ? ' on ${_date(cycle.paidAt!)}' : ''}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: KoloColors.success,
+                          color: palette.success,
                           fontWeight: FontWeight.w600,
                         ),
                   ),

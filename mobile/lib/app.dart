@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/theme/kolo_theme.dart';
+import 'core/theme/theme_mode.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
@@ -120,10 +121,14 @@ class _KoloAppState extends ConsumerState<KoloApp> {
       }
     });
 
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp.router(
       title: 'KOLO',
       debugShowCheckedModeBanner: false,
       theme: KoloTheme.light(),
+      darkTheme: KoloTheme.dark(),
+      themeMode: themeMode,
       routerConfig: _router,
     );
   }
@@ -154,6 +159,7 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -166,14 +172,14 @@ class WelcomeScreen extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: KoloColors.indigo,
+                  color: palette.accent,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
                     'K',
                     style: TextStyle(
-                      color: KoloColors.white,
+                      color: palette.surface,
                       fontSize: 32,
                       fontWeight: FontWeight.w800,
                     ),
@@ -189,7 +195,7 @@ class WelcomeScreen extends StatelessWidget {
               Text(
                 'Ajo, esusu, adashe — the groups you already trust, with every contribution '
                 'recorded and every payout backed by money that has actually been collected.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: KoloColors.inkSoft),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: palette.textSoft),
               ),
               const Spacer(),
               FilledButton(
@@ -202,10 +208,10 @@ class WelcomeScreen extends StatelessWidget {
                 child: const Text('I already have an account'),
               ),
               const SizedBox(height: 16),
-              const Center(
+              Center(
                 child: Text(
                   'Sandbox build — no real money moves',
-                  style: TextStyle(fontSize: 12, color: KoloColors.inkFaint),
+                  style: TextStyle(fontSize: 12, color: palette.textFaint),
                 ),
               ),
             ],

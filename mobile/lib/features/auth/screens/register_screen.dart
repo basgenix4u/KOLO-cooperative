@@ -56,6 +56,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
@@ -126,13 +127,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: KoloColors.cloud,
+                    color: palette.ground,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.lock_outline_rounded, size: 18, color: KoloColors.inkFaint),
+                      Icon(Icons.lock_outline_rounded, size: 18, color: palette.textFaint),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(

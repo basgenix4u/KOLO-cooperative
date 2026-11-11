@@ -11,6 +11,7 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.kolo;
     final notifications = ref.watch(notificationsProvider);
 
     return Scaffold(
@@ -54,7 +55,7 @@ class NotificationsScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final item = value[index];
                     return KoloCard(
-                      color: item.isUnread ? KoloColors.white : KoloColors.cloud,
+                      color: item.isUnread ? palette.surface : palette.ground,
                       padding: const EdgeInsets.all(14),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,13 +64,13 @@ class NotificationsScreen extends ConsumerWidget {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: item.isUnread ? KoloColors.indigo : KoloColors.divider,
+                              color: item.isUnread ? palette.accent : palette.divider,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
                               _iconFor(item.kind),
                               size: 18,
-                              color: item.isUnread ? KoloColors.white : KoloColors.inkFaint,
+                              color: item.isUnread ? palette.surface : palette.textFaint,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -82,7 +83,7 @@ class NotificationsScreen extends ConsumerWidget {
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: item.isUnread ? FontWeight.w700 : FontWeight.w600,
-                                    color: KoloColors.ink,
+                                    color: palette.text,
                                   ),
                                 ),
                                 const SizedBox(height: 3),

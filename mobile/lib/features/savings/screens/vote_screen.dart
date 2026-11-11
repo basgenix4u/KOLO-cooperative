@@ -106,6 +106,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     final proposal = widget.proposal;
     final total = proposal.totalVotes;
     final forShare = total == 0 ? 0.0 : proposal.votesFor / total;
@@ -117,7 +118,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
           Row(
             children: [
               if (proposal.isSecret) ...[
-                const Icon(Icons.visibility_off_outlined, size: 15, color: KoloColors.inkFaint),
+                Icon(Icons.visibility_off_outlined, size: 15, color: palette.textFaint),
                 const SizedBox(width: 5),
                 Text('Secret ballot', style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(width: 10),
@@ -140,11 +141,11 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
               children: [
                 Expanded(
                   flex: (forShare * 1000).round().clamp(1, 1000),
-                  child: Container(height: 8, color: KoloColors.success),
+                  child: Container(height: 8, color: palette.success),
                 ),
                 Expanded(
                   flex: ((1 - forShare) * 1000).round().clamp(1, 1000),
-                  child: Container(height: 8, color: KoloColors.dangerSoft),
+                  child: Container(height: 8, color: palette.dangerSoft),
                 ),
               ],
             ),
@@ -156,7 +157,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
               Text(
                 '${proposal.votesFor} for',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: KoloColors.success,
+                      color: palette.success,
                       fontWeight: FontWeight.w600,
                     ),
               ),
@@ -193,12 +194,12 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
           ] else if (proposal.iHaveVoted)
             Row(
               children: [
-                const Icon(Icons.check_circle, size: 16, color: KoloColors.success),
+                Icon(Icons.check_circle, size: 16, color: palette.success),
                 const SizedBox(width: 6),
                 Text(
                   'You have voted',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: KoloColors.success,
+                        color: palette.success,
                         fontWeight: FontWeight.w600,
                       ),
                 ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/kolo_theme.dart';
+import '../../core/theme/theme_mode.dart';
 import '../../shared/widgets/common.dart';
 import '../auth/auth_controller.dart';
 import '../savings/savings_providers.dart';
@@ -12,6 +13,7 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.kolo;
     final session = ref.watch(sessionProvider);
     final contributions = ref.watch(myContributionsProvider);
     final user = session.valueOrNull;
@@ -26,11 +28,11 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 CircleAvatar(
                   radius: 28,
-                  backgroundColor: KoloColors.indigo,
+                  backgroundColor: palette.accent,
                   child: Text(
                     (user?.displayName ?? 'K').characters.first.toUpperCase(),
-                    style: const TextStyle(
-                      color: KoloColors.white,
+                    style: TextStyle(
+                      color: palette.surface,
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
                     ),
@@ -110,7 +112,7 @@ class ProfileScreen extends ConsumerWidget {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text(item.amount.format(), style: KoloTheme.moneySmall),
+                                  Text(item.amount.format(), style: KoloTheme.moneySmall(context.kolo.textSoft)),
                                   const SizedBox(height: 4),
                                   StatusPill(status: item.status),
                                 ],
@@ -128,6 +130,8 @@ class ProfileScreen extends ConsumerWidget {
             error: (error, _) => ErrorNotice(error: error),
           ),
           const SizedBox(height: 24),
+          const _AppearanceSection(),
+          const SizedBox(height: 24),
           FilledButton.tonal(
             onPressed: () async {
               await ref.read(authControllerProvider).logout();
@@ -136,13 +140,64 @@ class ProfileScreen extends ConsumerWidget {
             child: const Text('Sign out'),
           ),
           const SizedBox(height: 16),
-          const Center(
+          Center(
             child: Text(
               'KOLO sandbox build\nNo real money moves in this environment',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: KoloColors.inkFaint, height: 1.5),
+              style: TextStyle(fontSize: 12, color: palette.textFaint, height: 1.5),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Appearance sits with the account rather than buried in a submenu: it is the
+/// one setting a member is likely to change on their first evening.
+class _AppearanceSection extends ConsumerWidget {
+  const _AppearanceSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.kolo;
+    final current = ref.watch(themeModeProvider);
+
+    return KoloCard(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.contrast_rounded, size: 20, color: palette.textSoft),
+              const SizedBox(width: 10),
+              Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'KOLO follows your phone by default.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 6),
+          for (final mode in ThemeMode.values)
+            RadioListTile<ThemeMode>(
+              value: mode,
+              groupValue: current,
+              onChanged: (value) {
+                if (value != null) ref.read(themeModeProvider.notifier).set(value);
+              },
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              activeColor: palette.accent,
+              title: Text(themeModeLabel(mode), style: Theme.of(context).textTheme.bodyLarge),
+              subtitle: switch (mode) {
+                ThemeMode.system => const Text('Uses your phone\'s light or dark setting'),
+                ThemeMode.light => const Text('Always the light Ink & Citrus palette'),
+                ThemeMode.dark => const Text('Always the night palette'),
+              },
+            ),
         ],
       ),
     );
@@ -157,12 +212,13 @@ class _Verified extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return Row(
       children: [
         Icon(
           ok ? Icons.check_circle : Icons.radio_button_unchecked,
           size: 18,
-          color: ok ? KoloColors.success : KoloColors.inkFaint,
+          color: ok ? palette.success : palette.textFaint,
         ),
         const SizedBox(width: 8),
         Text('$label ${ok ? 'verified' : 'not verified'}', style: Theme.of(context).textTheme.bodyMedium),

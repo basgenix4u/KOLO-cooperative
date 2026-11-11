@@ -67,6 +67,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return Scaffold(
       appBar: AppBar(title: const Text('New group')),
       body: SafeArea(
@@ -153,20 +154,20 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: KoloColors.amberSoft,
+                    color: palette.moneySoft,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.shield_outlined, size: 18, color: KoloColors.warning),
+                      Icon(Icons.shield_outlined, size: 18, color: palette.warning),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'You will be the owner. Withdrawals will need a second officer to '
                           'approve them, and you cannot approve a payout to yourself.',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: KoloColors.ink,
+                                color: palette.text,
                               ),
                         ),
                       ),
@@ -210,21 +211,22 @@ class _ChoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: KoloColors.white,
+          color: palette.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? KoloColors.indigo : KoloColors.divider,
+            color: selected ? palette.accent : palette.divider,
             width: selected ? 1.6 : 1,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: selected ? KoloColors.indigo : KoloColors.inkFaint),
+            Icon(icon, size: 20, color: selected ? palette.accent : palette.textFaint),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -235,7 +237,7 @@ class _ChoiceTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: selected ? KoloColors.indigo : KoloColors.ink,
+                      color: selected ? palette.accent : palette.text,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -244,7 +246,7 @@ class _ChoiceTile extends StatelessWidget {
               ),
             ),
             if (selected)
-              const Icon(Icons.check_circle, size: 20, color: KoloColors.indigo),
+              Icon(Icons.check_circle, size: 20, color: palette.accent),
           ],
         ),
       ),

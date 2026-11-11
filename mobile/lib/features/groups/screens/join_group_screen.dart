@@ -80,6 +80,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     return Scaffold(
       appBar: AppBar(title: const Text('Join a group')),
       body: SafeArea(
@@ -93,7 +94,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                 onSubmitted: (_) => _runSearch(),
                 decoration: InputDecoration(
                   hintText: 'Search by group name',
-                  prefixIcon: const Icon(Icons.search, color: KoloColors.inkFaint),
+                  prefixIcon: Icon(Icons.search, color: palette.textFaint),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.arrow_forward_rounded),
                     onPressed: _busy ? null : _runSearch,

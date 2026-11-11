@@ -108,6 +108,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     final myId = ref.watch(sessionProvider).valueOrNull?.id ?? '';
 
     return Scaffold(
@@ -148,9 +149,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             ),
             Container(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-              decoration: const BoxDecoration(
-                color: KoloColors.white,
-                border: Border(top: BorderSide(color: KoloColors.divider)),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                border: Border(top: BorderSide(color: palette.divider)),
               ),
               child: Row(
                 children: [
@@ -196,6 +197,7 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.kolo;
     final time = message.createdAt;
     final stamp = time == null
         ? ''
@@ -218,21 +220,21 @@ class _MessageBubble extends StatelessWidget {
             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isMine ? KoloColors.indigo : KoloColors.white,
+              color: isMine ? palette.accent : palette.surface,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: const Radius.circular(16),
                 bottomLeft: Radius.circular(isMine ? 16 : 4),
                 bottomRight: Radius.circular(isMine ? 4 : 16),
               ),
-              border: isMine ? null : Border.all(color: KoloColors.divider),
+              border: isMine ? null : Border.all(color: palette.divider),
             ),
             child: Text(
               message.isDeleted ? 'This message was removed' : message.body,
               style: TextStyle(
                 fontSize: 15,
                 height: 1.35,
-                color: isMine ? KoloColors.white : KoloColors.ink,
+                color: isMine ? palette.surface : palette.text,
                 fontStyle: message.isDeleted ? FontStyle.italic : FontStyle.normal,
               ),
             ),

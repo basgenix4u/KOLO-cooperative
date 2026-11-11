@@ -140,6 +140,8 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
   }
 
   Widget _amountForm(BuildContext context, programme) {
+
+    final palette = context.kolo;
     return Form(
       key: _formKey,
       child: Column(
@@ -168,10 +170,10 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.5),
             decoration: InputDecoration(
               prefixText: '${Money.symbolFor(_currency)} ',
-              prefixStyle: const TextStyle(
+              prefixStyle: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
-                color: KoloColors.ink,
+                color: palette.text,
               ),
               hintText: '0.00',
             ),
@@ -186,13 +188,13 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: KoloColors.cloud,
+              color: palette.ground,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline, size: 16, color: KoloColors.inkFaint),
+                Icon(Icons.info_outline, size: 16, color: palette.textFaint),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -221,6 +223,8 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
   }
 
   Widget _awaitingPayment(BuildContext context) {
+
+    final palette = context.kolo;
     final started = _started!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,8 +233,8 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
         Container(
           width: 56,
           height: 56,
-          decoration: const BoxDecoration(color: KoloColors.amberSoft, shape: BoxShape.circle),
-          child: const Icon(Icons.hourglass_top_rounded, color: KoloColors.warning),
+          decoration: BoxDecoration(color: palette.moneySoft, shape: BoxShape.circle),
+          child: Icon(Icons.hourglass_top_rounded, color: palette.warning),
         ),
         const SizedBox(height: 18),
         Text('Awaiting payment', style: Theme.of(context).textTheme.headlineMedium),
