@@ -9,6 +9,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from apps.common.audit import AuditLog
@@ -125,43 +126,75 @@ def issue_verification(*, user: User, channel: str, purpose: str, request=None) 
 
 
 def verify_code(*, user: User, code: str, purpose: str) -> VerificationCode:
-    """Consume a code or refuse. Attempts decrement on every wrong guess."""
-    record = (
-        VerificationCode.objects.select_for_update()
-        .filter(user=user, purpose=purpose, consumed_at__isnull=True)
-        .order_by("-created_at")
-        .first()
-    )
-    if not record:
-        raise DomainError("No code is pending for this action. Request a new one.", code="otp_missing")
-    if record.is_expired:
-        raise DomainError("That code has expired. Request a new one.", code="otp_expired")
-    if record.attempts_left <= 0:
-        raise DomainError("Too many incorrect attempts. Request a new code.", code="otp_locked")
+    """Consume a code or refuse. Attempts decrement on every wrong guess.
 
-    if not secrets.compare_digest(record.code_hash, hash_code(code.strip())):
-        record.attempts_left -= 1
-        record.save(update_fields=["attempts_left"])
-        AuditLog.record(action="otp.failed", actor=user, severity=AuditLog.Severity.WARNING,
-                        target_type="verification", target_id=record.pk,
-                        summary=f"Incorrect code, {record.attempts_left} attempts left")
+    Two things must both hold, and they pull in opposite directions:
+
+    * the row is locked while it is read and judged, so two simultaneous
+      submissions of the same code cannot both consume it (PostgreSQL refuses
+      `FOR UPDATE` in autocommit, which is why the lock lives in its own
+      transaction);
+    * the attempt counter and the consumed marker survive a refusal — and an
+      exception raised inside `transaction.atomic()` rolls that block back.
+
+    So the lock, the penalty and the consumption are each committed in their own
+    short transaction, and the refusal is raised afterwards, outside all of them.
+    Nesting a second `atomic()` inside an outer one would not have helped: it is
+    only a savepoint, and the outer rollback would still have taken the write
+    with it.
+
+    Before this was split up, a wrong code left `attempts_left` at 5 forever:
+    an attacker could try a six-digit code without limit.
+    """
+    with transaction.atomic():
+        record = (
+            VerificationCode.objects.select_for_update()
+            .filter(user=user, purpose=purpose, consumed_at__isnull=True)
+            .order_by("-created_at")
+            .first()
+        )
+        if not record:
+            raise DomainError("No code is pending for this action. Request a new one.", code="otp_missing")
+        if record.is_expired:
+            raise DomainError("That code has expired. Request a new one.", code="otp_expired")
+        if record.attempts_left <= 0:
+            raise DomainError("Too many incorrect attempts. Request a new code.", code="otp_locked")
+        matches = secrets.compare_digest(record.code_hash, hash_code(code.strip()))
+        attempts_left = record.attempts_left
+        record_pk = record.pk
+
+    if not matches:
+        # Committed in its own transaction so the penalty outlives the refusal.
+        with transaction.atomic():
+            VerificationCode.objects.filter(pk=record_pk).update(attempts_left=F("attempts_left") - 1)
+            fresh = VerificationCode.objects.only("attempts_left").get(pk=record_pk)
+            AuditLog.record(
+                action="otp.failed", actor=user, severity=AuditLog.Severity.WARNING,
+                target_type="verification", target_id=record_pk,
+                summary=f"Incorrect code, {fresh.attempts_left} attempts left",
+            )
         raise DomainError(
             "That code is not correct.",
             code="otp_invalid",
-            details={"attempts_left": record.attempts_left},
+            details={"attempts_left": fresh.attempts_left},
         )
 
-    record.consumed_at = timezone.now()
-    record.save(update_fields=["consumed_at"])
-
     with transaction.atomic():
+        # Conditional update: if another request consumed the same code in the
+        # meantime, nothing is written and the caller is told the code is gone.
+        consumed = VerificationCode.objects.filter(pk=record_pk, consumed_at__isnull=True).update(
+            consumed_at=timezone.now()
+        )
+        if not consumed:
+            raise DomainError("No code is pending for this action. Request a new one.", code="otp_missing")
+        record = VerificationCode.objects.get(pk=record_pk)
+
         if record.channel == "email":
             user.is_email_verified = True
         else:
             user.is_phone_verified = True
-        if user.is_email_verified or user.is_phone_verified:
-            if user.verification_level == "unverified":
-                user.verification_level = "contact"
+        if (user.is_email_verified or user.is_phone_verified) and user.verification_level == "unverified":
+            user.verification_level = "contact"
         user.save(update_fields=["is_email_verified", "is_phone_verified", "verification_level", "updated_at"])
         publish("account.verified", {"user_id": str(user.pk), "channel": record.channel})
     return record
@@ -225,31 +258,50 @@ def rotate_refresh_token(*, raw_token: str) -> tuple[User, str, RefreshToken]:
 
     Reuse of an already-rotated token means someone else has a copy: the entire
     family is revoked and the member must sign in again.
+
+    The refusal paths commit before they raise. A revoked-family write made
+    inside a block that then rolls back leaves the stolen session alive, which
+    defeats the whole point of reuse detection — so the revocation happens in
+    its own transaction and the caller is refused afterwards.
     """
-    record = RefreshToken.objects.select_for_update().filter(token_hash=hash_token(raw_token)).first()
-    if not record:
-        raise PermissionDeniedError("This session is no longer valid. Sign in again.", code="refresh_invalid")
-    if record.revoked_at:
-        RefreshToken.objects.filter(family=record.family, revoked_at__isnull=True).update(revoked_at=timezone.now())
-        AuditLog.record(action="auth.refresh_reuse", severity=AuditLog.Severity.CRITICAL,
-                        target_type="refresh_token", target_id=record.pk,
-                        summary="Rotated refresh token replayed; family revoked")
-        raise PermissionDeniedError("This session is no longer valid. Sign in again.", code="refresh_revoked")
-    if record.expires_at <= timezone.now():
-        raise PermissionDeniedError("Your session expired. Sign in again.", code="refresh_expired")
-
-    user = record.user
-    if not user.is_active:
-        raise PermissionDeniedError("This account is not active.", code="account_inactive")
-
+    digest = hash_token(raw_token)
     with transaction.atomic():
-        record.revoked_at = timezone.now()
-        record.rotated_at = timezone.now()
-        record.save(update_fields=["revoked_at", "rotated_at"])
-        raw, new_record = issue_refresh_token(user=user, device=record.device, family=record.family, parent=record)
-        if record.device:
-            DeviceSession.objects.filter(pk=record.device.pk).update(last_seen_at=timezone.now())
-    return user, raw, new_record
+        record = RefreshToken.objects.select_for_update().filter(token_hash=digest).first()
+        if not record:
+            raise PermissionDeniedError("This session is no longer valid. Sign in again.", code="refresh_invalid")
+
+        if record.revoked_at:
+            reuse_of_family = record.family
+            record_pk = record.pk
+        else:
+            reuse_of_family = None
+            if record.expires_at <= timezone.now():
+                raise PermissionDeniedError("Your session expired. Sign in again.", code="refresh_expired")
+            user = record.user
+            if not user.is_active:
+                raise PermissionDeniedError("This account is not active.", code="account_inactive")
+
+            record.revoked_at = timezone.now()
+            record.rotated_at = timezone.now()
+            record.save(update_fields=["revoked_at", "rotated_at"])
+            raw, new_record = issue_refresh_token(
+                user=user, device=record.device, family=record.family, parent=record
+            )
+            if record.device:
+                DeviceSession.objects.filter(pk=record.device.pk).update(last_seen_at=timezone.now())
+            return user, raw, new_record
+
+    # Reuse detected: kill the family in its own committed transaction, then refuse.
+    with transaction.atomic():
+        revoked = RefreshToken.objects.filter(family=reuse_of_family, revoked_at__isnull=True).update(
+            revoked_at=timezone.now()
+        )
+        AuditLog.record(
+            action="auth.refresh_reuse", severity=AuditLog.Severity.CRITICAL,
+            target_type="refresh_token", target_id=record_pk,
+            summary=f"Rotated refresh token replayed; {revoked} token(s) in the family revoked",
+        )
+    raise PermissionDeniedError("This session is no longer valid. Sign in again.", code="refresh_revoked")
 
 
 def revoke_all_sessions(user: User, *, reason: str = "") -> int:
