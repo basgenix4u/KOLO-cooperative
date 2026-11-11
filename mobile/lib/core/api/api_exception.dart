@@ -19,6 +19,21 @@ class ApiException implements Exception {
   final Map<String, List<String>> fieldErrors;
 
   bool get isAuthError => statusCode == 401 || code == 'not_authenticated';
+
+  /// True when the server asked us to slow down. The UI should say "try again
+  /// in N seconds" rather than showing a failure the member cannot act on.
+  bool get isRateLimited => statusCode == 429 || code == 'throttled';
+
+  /// How long the server asked us to wait, when it said so.
+  int? get retryAfterSeconds {
+    final fromDetails = details['retry_after_seconds'];
+    if (fromDetails is int) return fromDetails;
+    if (fromDetails is String) return int.tryParse(fromDetails);
+    // The throttled body carries the wait inside the prose, e.g.
+    // "Expected available in 42 seconds."
+    final match = RegExp(r'in (\d+) seconds?').firstMatch(message);
+    return match == null ? null : int.tryParse(match.group(1)!);
+  }
   bool get isNetworkError => code == 'network_error';
   bool get isOffline => code == 'offline';
 

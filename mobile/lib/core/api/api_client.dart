@@ -23,9 +23,12 @@ class ApiClient {
       receiveTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 30),
       headers: {'Accept': 'application/json'},
-      // Let every status through to the interceptor so we can map errors
-      // ourselves instead of guessing from a DioException type.
-      validateStatus: (status) => status != null && status < 500,
+      // 4xx are failures, not responses. `onError` — and therefore the
+      // refresh-and-retry path — only runs for statuses Dio rejects. Allowing
+      // 4xx through here made session recovery dead code: an expired access
+      // token surfaced as a raw "token not valid" error and the member was
+      // never refreshed, never retried, never signed out cleanly.
+      validateStatus: (status) => status != null && status < 400,
     );
     _dio.interceptors.add(
       InterceptorsWrapper(onRequest: _attachToken, onError: _onError),
@@ -74,9 +77,16 @@ class ApiClient {
 
   /// A money-moving request is only replayed when it carries an idempotency key.
   /// Without one, a replay after a refresh could charge a member twice.
+  ///
+  /// Header lookup is case-insensitive: Dio normalises header names, so an
+  /// exact `containsKey('Idempotency-Key')` silently missed the key and refused
+  /// to replay safe writes.
+  bool _hasIdempotencyKey(RequestOptions options) =>
+      options.headers.keys.any((key) => key.toLowerCase() == 'idempotency-key');
+
   Future<Response<dynamic>> _replay(RequestOptions options) {
     final isWrite = options.method != 'GET';
-    final hasKey = options.headers.containsKey('Idempotency-Key');
+    final hasKey = _hasIdempotencyKey(options);
     if (isWrite && !hasKey) {
       throw DioException(
         requestOptions: options,
@@ -150,8 +160,10 @@ class ApiClient {
   Future<dynamic> _send(Future<Response<dynamic>> Function() request) async {
     try {
       final response = await request();
+      // A 3xx or 4xx that reaches here came from the replay path; the normal
+      // path already rejected anything under 400 via `validateStatus`.
       final status = response.statusCode ?? 0;
-      if (status >= 400) {
+      if (status >= 300) {
         throw ApiException.fromResponse(response);
       }
       return response.data;
@@ -185,7 +197,7 @@ class ApiClient {
     try {
       final response = await _dio.get(path, queryParameters: query);
       final status = response.statusCode ?? 0;
-      if (status >= 400) throw ApiException.fromResponse(response);
+      if (status >= 300) throw ApiException.fromResponse(response);
 
       final body = response.data;
       final list = body is Map ? body['data'] : body;
