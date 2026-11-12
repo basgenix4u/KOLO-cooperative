@@ -23,6 +23,11 @@ dependencies:
   # Intl for money formatting; every amount is integer minor units.
   intl: ^0.19.0
 
+  # Deep links: an invitation or a payment link opens the app rather than a
+  # browser. Pinned instead of hand-written platform plumbing so iOS and Android
+  # behave the same way.
+  app_links: ^6.3.2
+
   # Charts on the group dashboard.
   fl_chart: ^0.69.0
 

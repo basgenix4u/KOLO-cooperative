@@ -204,6 +204,7 @@ class RotationCycle {
 class Obligation {
   const Obligation({
     required this.id,
+    required this.programmeId,
     required this.programmeName,
     required this.dueDate,
     required this.amount,
@@ -213,6 +214,10 @@ class Obligation {
   });
 
   final String id;
+
+  /// Needed to start a payment for this obligation: contributions are created
+  /// against a programme, not against the obligation alone.
+  final String programmeId;
   final String programmeName;
   final DateTime? dueDate;
   final Money amount;
@@ -227,6 +232,7 @@ class Obligation {
     int asInt(String key) => (json[key] as num?)?.toInt() ?? 0;
     return Obligation(
       id: '${json['id'] ?? ''}',
+      programmeId: '${json['programme_id'] ?? ''}',
       programmeName: '${json['programme_name'] ?? ''}',
       dueDate: DateTime.tryParse('${json['due_date'] ?? ''}'),
       amount: Money(asInt('amount_minor'), currency),

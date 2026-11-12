@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/deeplink/deep_links.dart';
 import 'core/theme/kolo_theme.dart';
 import 'core/theme/theme_mode.dart';
 import 'features/auth/auth_controller.dart';
@@ -16,6 +19,7 @@ import 'features/groups/screens/join_group_screen.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/savings/screens/contribute_screen.dart';
+import 'features/savings/screens/contributions_screen.dart';
 import 'features/savings/screens/payouts_screen.dart';
 import 'features/savings/screens/programme_detail_screen.dart';
 import 'features/savings/screens/vote_screen.dart';
@@ -30,10 +34,54 @@ class KoloApp extends ConsumerStatefulWidget {
 class _KoloAppState extends ConsumerState<KoloApp> {
   late final GoRouter _router;
 
+  final _links = DeepLinkListener();
+  StreamSubscription<DeepLink>? _linkSubscription;
+
+  /// A link that arrived while the member was signed out. The router sends them
+  /// to sign-in, and the destination would otherwise be forgotten — so it is
+  /// held here and opened once a session exists. An invitation is useless if
+  /// creating an account loses it.
+  DeepLink? _pending;
+
   @override
   void initState() {
     super.initState();
     _router = _buildRouter();
+    _listenForLinks();
+  }
+
+  Future<void> _listenForLinks() async {
+    try {
+      // The link that launched a cold start is delivered once, here.
+      final initial = await _links.initial();
+      if (initial != null) {
+        _open(initial);
+      }
+      _linkSubscription = _links.stream().listen(_open);
+    } catch (error) {
+      // Deep linking is a convenience. A platform that cannot deliver links
+      // must not stop the app from opening.
+      debugPrint('KOLO: deep links unavailable: $error');
+    }
+  }
+
+  void _open(DeepLink link) {
+    if (_hasSession) {
+      _router.go(link.path);
+      return;
+    }
+    // Signed out. Remember where they were going, then send them to sign-in:
+    // the redirect below would otherwise make the link dead on arrival.
+    _pending = link;
+    _router.go(link.requiresSession ? '/welcome' : link.path);
+  }
+
+  bool get _hasSession => ref.read(sessionProvider).valueOrNull != null;
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    super.dispose();
   }
 
   GoRouter _buildRouter() {
@@ -73,7 +121,9 @@ class _KoloAppState extends ConsumerState<KoloApp> {
         ),
         GoRoute(
           path: '/groups/join',
-          builder: (_, __) => const JoinGroupScreen(),
+          builder: (_, state) => JoinGroupScreen(
+            invitationCode: state.uri.queryParameters['code'],
+          ),
         ),
         GoRoute(
           path: '/groups/:slug',
@@ -118,6 +168,7 @@ class _KoloAppState extends ConsumerState<KoloApp> {
             ),
           ],
         ),
+        GoRoute(path: '/contributions', builder: (_, __) => const ContributionsScreen()),
         GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
         GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
       ],
@@ -129,6 +180,13 @@ class _KoloAppState extends ConsumerState<KoloApp> {
     // When the API client gives up on a session, send the member to sign-in
     // rather than leaving them on a screen that cannot load.
     ref.listen(sessionProvider, (previous, next) {
+      // A link that arrived while signed out is finally actionable.
+      final pending = _pending;
+      if (pending != null && next.hasValue && next.valueOrNull != null) {
+        _pending = null;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _router.go(pending.path));
+        return;
+      }
       if (next.hasValue && next.valueOrNull == null) {
         final location = _router.routerDelegate.currentConfiguration.uri.path;
         if (!location.startsWith('/welcome') && !location.startsWith('/login')) {

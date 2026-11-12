@@ -4,12 +4,17 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/providers.dart';
+import '../../savings/savings_providers.dart';
 import '../../../core/models/models.dart';
 import '../../../core/theme/kolo_theme.dart';
 import '../../../shared/widgets/common.dart';
 
 class JoinGroupScreen extends ConsumerStatefulWidget {
-  const JoinGroupScreen({super.key});
+  const JoinGroupScreen({super.key, this.invitationCode});
+
+  /// Supplied by an invitation deep link. Pre-filling it means the member taps
+  /// the link once instead of copying a code out of a chat message.
+  final String? invitationCode;
 
   @override
   ConsumerState<JoinGroupScreen> createState() => _JoinGroupScreenState();
@@ -17,15 +22,77 @@ class JoinGroupScreen extends ConsumerStatefulWidget {
 
 class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   final _search = TextEditingController();
+  final _code = TextEditingController();
   List<GroupSummary> _results = const [];
   bool _busy = false;
   bool _searched = false;
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    final code = widget.invitationCode;
+    if (code != null && code.isNotEmpty) {
+      _code.text = code;
+      // An invitation is the whole reason the member is here, so redeem it
+      // rather than making them find the button.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _redeemCode());
+    }
+  }
+
+  @override
   void dispose() {
     _search.dispose();
+    _code.dispose();
     super.dispose();
+  }
+
+  Future<void> _redeemCode() async {
+    final code = _code.text.trim();
+    if (code.isEmpty) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final data = await ref.read(apiClientProvider).post(
+        '/groups/invitations/accept/',
+        body: {'token': code},
+      );
+      if (!mounted) return;
+      ref.invalidate(myGroupsFreshProvider);
+      final slug = data['slug'];
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('You are in'),
+          content: Text('Welcome to ${data['name'] ?? 'the group'}.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                if (slug is String && slug.isNotEmpty) {
+                  context.push('/groups/$slug');
+                } else {
+                  context.pop();
+                }
+              },
+              child: const Text('Open group'),
+            ),
+          ],
+        ),
+      );
+    } on ApiException catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = error.code == 'invitation_used' || error.code == 'invitation_invalid'
+              ? 'That invitation is no longer valid. Ask an officer for a new one.'
+              : error.userMessage;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _runSearch() async {
@@ -86,8 +153,33 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // The code path first: an invitation is the more direct way in, and
+            // the one a link delivers.
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _code,
+                      textCapitalization: TextCapitalization.characters,
+                      onSubmitted: (_) => _redeemCode(),
+                      decoration: const InputDecoration(
+                        labelText: 'Invitation code',
+                        hintText: 'Paste the code an officer sent you',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton.tonal(
+                    onPressed: _busy ? null : _redeemCode,
+                    child: const Text('Join'),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
               child: TextField(
                 controller: _search,
                 textInputAction: TextInputAction.search,
