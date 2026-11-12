@@ -315,5 +315,61 @@ void main() {
       final obligations = await client.getList('/savings/obligations/');
       expect(obligations, isEmpty, reason: 'a new member owes nothing yet');
     }, timeout: perTestTimeout);
+
+    test('a payout cannot be approved by the officer who requested it', () async {
+      // The client now has a payout screen, so its refusals must be the ones the
+      // screen explains. This is the hole that existed in production: a founder
+      // holds both permissions, so nothing but the service stopped one officer
+      // signing off their own withdrawal.
+      await join(client, tokens, 'payout');
+
+      final group = await honouringRateLimit(() => client.post('/groups/', body: {
+            'name': 'Flutter Payout ${DateTime.now().millisecondsSinceEpoch}',
+            'currency': 'NGN',
+            // Group visibility is public / private / restricted. A programme's
+            // visibility is a different set; mixing the two is a validation
+            // error rather than a wrong guess about who can see what.
+            'visibility': 'restricted',
+          }));
+      final slug = group['slug'] as String;
+
+      final start = DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10);
+      final programme = await client.post('/savings/programmes/', body: {
+        'group': slug,
+        'name': 'Payout Programme',
+        'type': 'target',
+        'contribution_amount_minor': 500000,
+        'frequency': 'monthly',
+        'start_date': start,
+        'target_amount_minor': 2000000,
+        'visibility': 'members',
+        'currency': 'NGN',
+      });
+      final programmeId = programme['id'] as String;
+
+      // A programme with no money must refuse a withdrawal rather than create a
+      // request the group cannot honour.
+      try {
+        await client.post('/savings/programmes/$programmeId/withdrawals/', body: {
+          'amount_minor': 500000,
+          'reason': 'other',
+        });
+        fail('a withdrawal from an empty programme must be refused');
+      } on ApiException catch (error) {
+        expect(error.code, 'insufficient_funds');
+        expect(error.statusCode, 400);
+      }
+
+      // The payout screen asks for the group pool before letting anyone act; a
+      // figure it cannot read would make the screen show nothing.
+      final summary = await client.get('/savings/groups/$slug/summary/');
+      final programmes = summary['programmes'];
+      expect(programmes, isA<List>());
+      expect(
+        (programmes as List).any((p) => p is Map && p['id'] == programmeId),
+        isTrue,
+        reason: 'the payout screen reads available-to-pay from this figure',
+      );
+    }, timeout: perTestTimeout);
   }, skip: baseUrl == null ? 'set KOLO_LIVE_BASE to run against a live server' : null);
 }
