@@ -39,7 +39,7 @@ import urllib.request
 BASE = os.environ.get("KOLO_BASE_URL", "http://127.0.0.1:8000")
 SERVER_LOG = Path(os.environ.get("KOLO_SERVER_LOG", "/tmp/kolo_server.log"))
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-PYTHON = os.environ.get("KOLO_PYTHON", "/home/user/.venv/bin/python")
+PYTHON = os.environ.get("KOLO_PYTHON", "/home/user/kolo/.venv-backend/bin/python")
 PASSWORD = "Str0ng-Passw0rd!23"
 
 # --------------------------------------------------------------------------
@@ -494,6 +494,199 @@ def run(report: Report, *, base: str, keep: bool) -> int:
         )
 
     reset_throttles()
+    reset_throttles()
+    report.section("5b. A fully funded payout, two officers, to a bank account")
+    # Everything above proved that an unfunded payout is refused. This proves the
+    # other half: when the money really is there and two different officers sign,
+    # it goes through — and the same officer cannot do both halves.
+
+    # Everyone who is due to contribute actually pays.
+    for payer in (treasurer, amaka, bola):
+        status, body = payer.api.get("/api/v1/savings/obligations/")
+        for owed in body.get("data", []):
+            if owed.get("programme_id") != programme_id or owed.get("status") == "settled":
+                continue
+            status, body = payer.api.post(f"/api/v1/savings/programmes/{programme_id}/contributions/", {
+                "amount_minor": owed["amount_minor"], "obligation_id": owed["id"],
+                "idempotency_key": f"e2e-fund-{uuid.uuid4().hex[:8]}",
+            })
+            if status != 201:
+                report.check(f"a member can start their contribution", False, f"{status} {body}")
+                continue
+            reference = body.get("data", {}).get("payment", {}).get("reference")
+            django_shell(
+                "from apps.payments.models import PaymentIntent\n"
+                "from apps.payments.providers import store\n"
+                f"i = PaymentIntent.objects.get(reference='{reference}')\n"
+                "store.record(i.provider_reference, amount_minor=i.amount_minor, currency=i.currency, paid=True)\n"
+                "print('paid')\n"
+            )
+            payer.api.post("/api/v1/payments/verify/", {"reference": reference})
+    # The chairperson pays their own way too; without it the cycle is short.
+    status, body = chair.api.get("/api/v1/savings/obligations/")
+    for owed in body.get("data", []):
+        if owed.get("programme_id") != programme_id or owed.get("status") == "settled":
+            continue
+        status, body = chair.api.post(f"/api/v1/savings/programmes/{programme_id}/contributions/", {
+            "amount_minor": owed["amount_minor"], "obligation_id": owed["id"],
+            "idempotency_key": f"e2e-fund-{uuid.uuid4().hex[:8]}",
+        })
+        if status == 201:
+            reference = body.get("data", {}).get("payment", {}).get("reference")
+            django_shell(
+                "from apps.payments.models import PaymentIntent\n"
+                "from apps.payments.providers import store\n"
+                f"i = PaymentIntent.objects.get(reference='{reference}')\n"
+                "store.record(i.provider_reference, amount_minor=i.amount_minor, currency=i.currency, paid=True)\n"
+                "print('paid')\n"
+            )
+            chair.api.post("/api/v1/payments/verify/", {"reference": reference})
+
+    status, body = chair.api.get(f"/api/v1/savings/programmes/{programme_id}/cycles/")
+    cycle = body["data"][0]
+    cycle_id = cycle["id"]
+    report.note(f"cycle 1 now {cycle.get('collected_total_minor')} of {cycle.get('expected_total_minor')}")
+
+    # The chairperson approves, and is refused the execution: same person, both halves.
+    status, body = chair.api.post(f"/api/v1/savings/cycles/{cycle_id}/approve/")
+    report.check("cycle 1 can be approved once funded", status == 200, f"{status} {body}")
+    status, body = chair.api.post(f"/api/v1/savings/cycles/{cycle_id}/execute/", {
+        "account_number": "0123456789", "bank_code": "058", "account_name": "E2E Beneficiary",
+    })
+    report.check(
+        "the officer who approved cannot also execute it",
+        status == 403 and body.get("error", {}).get("code") == "approver_cannot_execute",
+        f"{status} {body}",
+    )
+
+    # A different officer can.
+    status, body = treasurer.api.post(f"/api/v1/savings/cycles/{cycle_id}/execute/", {
+        "account_number": "0123456789", "bank_code": "058", "account_name": "E2E Beneficiary",
+    })
+    report.check("a second officer can execute the approved payout", status == 200, f"{status} {body}")
+
+    # Executing again must not pay again.
+    status, body = treasurer.api.post(f"/api/v1/savings/cycles/{cycle_id}/execute/", {
+        "account_number": "0123456789", "bank_code": "058", "account_name": "E2E Beneficiary",
+    })
+    report.check("executing twice does not pay twice", status in (200, 400, 409), f"{status} {body}")
+    status, body = chair.api.get(f"/api/v1/savings/programmes/{programme_id}/cycles/")
+    paid_cycle = next(c for c in body["data"] if c["id"] == cycle_id)
+    report.check("the cycle reads back as paid", paid_cycle.get("status") == "paid",
+                 f"status={paid_cycle.get('status')}")
+    report.note(f"cycle ledger reference {paid_cycle.get('ledger_reference')}")
+
+    # Still a plain member at this point: this is the last moment the assertion
+    # below is about a member rather than an officer.
+    status, body = bola.api.get(f"/api/v1/groups/{slug}/requests/")
+    report.check("a plain member cannot read join requests (officer permission)", status in (403,), f"got {status}")
+
+    # Withdrawals need their own pot. The rotation above paid out everything the
+    # group had collected — which is what a full rotation does — so a withdrawal
+    # against the same programme could only ever be refused for lack of funds.
+    # A second programme, funded for real through the same payment flow, keeps the
+    # withdrawal test about permissions rather than about an empty balance.
+    status, body = chair.api.post("/api/v1/savings/programmes/", {
+        "group": slug, "name": "E2E Welfare Fund", "type": "target",
+        "contribution_amount_minor": 50_000, "frequency": "monthly", "start_date": start,
+        "target_amount_minor": 200_000, "visibility": "members", "currency": "NGN",
+    })
+    report.check("a second programme is created for withdrawals", status == 201, f"{status} {body}")
+    welfare_id = body["data"]["id"]
+
+    status, body = chair.api.post(f"/api/v1/savings/programmes/{welfare_id}/participants/", {
+        "membership_ids": membership_ids,
+    })
+    report.check("members join the welfare programme", status == 201, f"{status} {body}")
+
+    # A draft programme has no obligations, so there would be nothing to pay and
+    # the fund would sit empty. It has to be scheduled and started first, exactly
+    # as the rotation programme was.
+    for target in ("scheduled", "active"):
+        status, body = chair.api.post(f"/api/v1/savings/programmes/{welfare_id}/status/",
+                                      {"status": target})
+        report.check(f"the welfare programme is {target}", status == 200, f"{status} {body}")
+
+    # One member actually pays into it: now the fund has money of its own.
+    status, body = chair.api.get("/api/v1/savings/obligations/")
+    welfare_due = [o for o in body.get("data", [])
+                   if o.get("programme_id") == welfare_id and o.get("status") != "settled"]
+    if welfare_due:
+        owed = welfare_due[0]
+        status, body = chair.api.post(f"/api/v1/savings/programmes/{welfare_id}/contributions/", {
+            "amount_minor": owed["amount_minor"], "obligation_id": owed["id"],
+            "idempotency_key": f"e2e-welfare-{uuid.uuid4().hex[:8]}",
+        })
+        if status == 201:
+            reference = body.get("data", {}).get("payment", {}).get("reference")
+            django_shell(
+                "from apps.payments.models import PaymentIntent\n"
+                "from apps.payments.providers import store\n"
+                f"i = PaymentIntent.objects.get(reference='{reference}')\n"
+                "store.record(i.provider_reference, amount_minor=i.amount_minor, currency=i.currency, paid=True)\n"
+                "print('paid')\n"
+            )
+            chair.api.post("/api/v1/payments/verify/", {"reference": reference})
+    report.check("the welfare fund holds money", status == 201, f"{status}")
+
+    # Now the two-signature story, on money that is really there.
+    for name, role in (("Amaka", "admin"), ("Bola", "owner")):
+        row = next((m for m in member_rows if name in m["full_name"]), None)
+        if row:
+            status, body = chair.api.patch_(f"/api/v1/groups/{slug}/members/{row['id']}/role/",
+                                            {"role": role})
+            report.check(f"chairperson makes {name} an officer who can approve",
+                         status == 200, f"{status} {body}")
+
+    status, body = chair.api.post(f"/api/v1/savings/programmes/{welfare_id}/withdrawals/", {
+        "amount_minor": 5_000, "reason": "other", "note": "e2e separation-of-duties check",
+    })
+    report.check("an officer requests a withdrawal", status == 201, f"{status} {body}")
+    withdrawal_id = body.get("data", {}).get("id")
+    report.check("a new withdrawal waits for a second officer",
+                 body.get("data", {}).get("status") == "pending_approval",
+                 f"status={body.get('data', {}).get('status')}")
+
+    # The chairperson can approve in principle — which is what makes this test
+    # worth running. The refusal must come from the conflict rule, not from the
+    # permission gate, or the hole would simply be hidden behind a different error.
+    status, body = chair.api.post(f"/api/v1/savings/withdrawals/{withdrawal_id}/decide/", {"approve": True})
+    report.check(
+        "the requester cannot approve their own withdrawal",
+        status == 403 and body.get("error", {}).get("code") == "self_approval_blocked",
+        f"{status} {body}",
+    )
+
+    # The treasurer signs, and the treasurer also holds the execute permission.
+    # That combination is the whole point: the refusal that follows must come
+    # from the separation-of-duties rule, not from a missing permission.
+    status, body = amaka.api.post(f"/api/v1/savings/withdrawals/{withdrawal_id}/decide/", {"approve": True})
+    report.check("a second officer signs it", status == 200, f"{status} {body}")
+
+    status, body = bola.api.post(f"/api/v1/savings/withdrawals/{withdrawal_id}/decide/", {"approve": True})
+    report.check("a third officer completes dual approval", status == 200, f"{status} {body}")
+
+    # Bola holds both approve and execute, which is the case worth checking: the
+    # refusal has to come from the conflict rule, not from a missing permission.
+    status, body = bola.api.post(f"/api/v1/savings/withdrawals/{withdrawal_id}/execute/", {
+        "account_number": "0123456789", "bank_code": "058", "account_name": "E2E Beneficiary",
+    })
+    report.check(
+        "the officer who approved cannot also send it",
+        status == 403 and body.get("error", {}).get("code") == "approver_cannot_execute",
+        f"{status} {body}",
+    )
+
+    status, body = chair.api.post(f"/api/v1/savings/withdrawals/{withdrawal_id}/execute/", {
+        "account_number": "0123456789", "bank_code": "058", "account_name": "E2E Beneficiary",
+    })
+    report.check(
+        "an approved withdrawal reaches the provider",
+        status == 200 and body.get("data", {}).get("status") not in {None, "approved"},
+        f"{status} {body}",
+    )
+
+    reset_throttles()
     report.section("6. Permissions and membership restrictions")
     status, body = outsider.api.get(f"/api/v1/savings/programmes/{programme_id}/")
     report.check("a non-member cannot read a group's programme", status in (403, 404), f"got {status}")
@@ -501,8 +694,6 @@ def run(report: Report, *, base: str, keep: bool) -> int:
     status, body = outsider.api.get(f"/api/v1/savings/obligations/")
     report.check("a non-member sees no obligations", status == 200 and body.get("data") == [], str(body)[:150])
 
-    status, body = amaka.api.get(f"/api/v1/groups/{slug}/requests/")
-    report.check("a plain member cannot read join requests (officer permission)", status in (403,), f"got {status}")
 
     status, body = amaka.api.post(f"/api/v1/savings/cycles/{cycle_id}/approve/")
     report.check("a plain member cannot approve a payout", status in (403,), f"got {status}")
@@ -551,7 +742,14 @@ def run(report: Report, *, base: str, keep: bool) -> int:
         "pool = Account.objects.filter(code='PROGRAMME_POOL', scope_type='programme', scope_id='" + programme_id + "').first()\n"
         "paid = Contribution.objects.filter(programme_id='" + programme_id + "', status='confirmed').aggregate(s=Sum('amount_minor'))['s'] or 0\n"
         "pool_balance = ledger.balance_of(pool) if pool else None\n"
-        "print(paid, pool_balance, 'MATCH' if pool_balance == paid else 'MISMATCH')\n"
+        # A rotation payout and a withdrawal have already left the pool by now.
+        # Reconciliation compares what was paid in against what is still there
+        # plus what has gone out; money is conserved, not merely present.
+        "from apps.savings.models import WithdrawalRequest, RotationCycle\n"
+        "paid_out = WithdrawalRequest.objects.filter(programme_id='" + programme_id + "', status='paid').aggregate(s=Sum('amount_minor'))['s'] or 0\n"
+        "cycles_out = RotationCycle.objects.filter(programme_id='" + programme_id + "', status='paid').aggregate(s=Sum('payout_amount_minor'))['s'] or 0\n"
+        "expected = paid - paid_out - cycles_out\n"
+        "print(paid, pool_balance, paid_out, cycles_out, 'MATCH' if pool_balance == expected else 'MISMATCH')\n"
     )
     print(DIM + f"    (confirmed contributions, programme pool balance): {reconciliation}" + RESET)
     report.check(

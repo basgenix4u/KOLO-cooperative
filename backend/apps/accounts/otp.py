@@ -76,6 +76,11 @@ class EmailOtpProvider:
     def send(self, message: OtpMessage) -> None:
         from django.core.mail import send_mail
 
+        logger.info(
+            '{"event":"otp_sent","channel":"email","destination":"%s","purpose":"%s"}',
+            _mask(message.destination), message.purpose,
+        )
+
         send_mail(
             subject="Your KOLO verification code",
             message=(

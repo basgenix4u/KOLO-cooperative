@@ -114,6 +114,14 @@ def transition(*, actor, programme: Programme, to_status: str, note: str = "") -
             programme.activated_at = timezone.now()
             if programme.type == ProgrammeType.ROTATIONAL:
                 _ensure_first_cycle(programme)
+            else:
+                # Non-rotational programmes collect too. Obligations were only
+                # ever created as a side effect of opening a rotation cycle, so a
+                # target or accumulated savings pot activated cleanly, enrolled
+                # its members, and then gave every one of them an empty
+                # obligation list — nobody could pay into it at all. The first
+                # period is opened here for the programmes that have no cycle.
+                _ensure_first_period(programme)
         if to_status in {Programme.Status.COMPLETED, Programme.Status.CLOSED}:
             _assert_closeable(programme)
             programme.closed_at = timezone.now()
@@ -305,6 +313,18 @@ def _ensure_first_cycle(programme: Programme) -> RotationCycle:
     )
     generate_obligations(programme=programme, period_start=start, period_end=end, cycle=cycle)
     return cycle
+
+
+def _ensure_first_period(programme: Programme) -> list:
+    """Open the first collection period for a programme with no rotation.
+
+    Idempotent: `generate_obligations` is keyed on (programme, participation,
+    due date), so re-activating a paused programme does not double-bill anyone.
+    """
+    interval = programme.custom_interval_days or FREQUENCY_DAYS.get(programme.frequency, 30)
+    start = max(programme.start_date, timezone.localdate())
+    end = start + timedelta(days=interval)
+    return generate_obligations(programme=programme, period_start=start, period_end=end)
 
 
 def record_offline_contribution(
@@ -623,7 +643,8 @@ def execute_payout(*, actor, cycle: RotationCycle) -> RotationCycle:
         programme = cycle.programme
         pool = ledger.programme_pool(programme)
         liability = ledger.programme_liability(programme)
-        holding = ledger.member_holding(programme.group, cycle.beneficiary.membership_id, programme.currency)
+        settlement = ledger.provider_settlement(programme.currency)
+        payable = ledger.provider_payable(programme.currency)
 
         available = ledger.available_of(ledger.lock_account(pool.pk))
         if available < cycle.payout_amount_minor:
@@ -641,11 +662,16 @@ def execute_payout(*, actor, cycle: RotationCycle) -> RotationCycle:
             source_id=str(cycle.pk),
             idempotency_key=f"payout:{cycle.pk}",
             posted_by=actor,
+            # The money leaves the programme for good. An earlier version
+            # credited the pool back on its third leg and debited the
+            # beneficiary's holding on its fourth, so the pool never went down
+            # and `paid` cycles left the books unchanged. The debit belongs to
+            # the account that actually loses the money.
             legs=[
-                ledger.Leg(account=liability, amount_minor=cycle.payout_amount_minor, memo="Reduce member funds"),
                 ledger.Leg(account=pool, amount_minor=-cycle.payout_amount_minor, memo="Pool out"),
-                ledger.Leg(account=pool, amount_minor=cycle.payout_amount_minor, memo="To beneficiary holding"),
-                ledger.Leg(account=holding, amount_minor=-cycle.payout_amount_minor, memo="Beneficiary holding"),
+                ledger.Leg(account=liability, amount_minor=cycle.payout_amount_minor, memo="Member funds out"),
+                ledger.Leg(account=payable, amount_minor=-cycle.payout_amount_minor, memo="Payable to beneficiary"),
+                ledger.Leg(account=settlement, amount_minor=cycle.payout_amount_minor, memo="Held for payout"),
             ],
         )
 
@@ -832,6 +858,16 @@ def execute_withdrawal(*, actor, withdrawal: WithdrawalRequest, account_number: 
                 "This withdrawal has not been approved.",
                 code="withdrawal_not_approved",
                 details={"status": withdrawal.status},
+            )
+
+        # Rotation payouts already refuse this; withdrawals did not. Approving
+        # and paying are the two halves of one act, and one officer holding both
+        # halves is indistinguishable from one officer holding all of it.
+        if withdrawal.approval_records.filter(approver=actor, approved=True).exists():
+            raise PermissionDeniedError(
+                "You approved this payout, so a different officer must send it.",
+                code="approver_cannot_execute",
+                details={"reason": "approver_cannot_execute"},
             )
 
         pool = ledger.programme_pool(programme)

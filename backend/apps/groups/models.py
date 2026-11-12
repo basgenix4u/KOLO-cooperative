@@ -95,7 +95,7 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         Permission.PROGRAMME_VIEW, Permission.PROGRAMME_CREATE, Permission.PROGRAMME_EDIT,
         Permission.PROGRAMME_ACTIVATE, Permission.PROGRAMME_CLOSE,
         Permission.FINANCE_VIEW, Permission.FINANCE_POST,
-        Permission.WITHDRAWAL_REQUEST, Permission.WITHDRAWAL_APPROVE,
+        Permission.WITHDRAWAL_REQUEST, Permission.WITHDRAWAL_APPROVE, Permission.WITHDRAWAL_EXECUTE,
         Permission.PAYOUT_APPROVE, Permission.LOAN_VIEW, Permission.LOAN_APPROVE,
         Permission.PROPOSAL_CREATE, Permission.PROPOSAL_MANAGE, Permission.RESOLUTION_PUBLISH,
         Permission.CHAT_MODERATE,
@@ -111,7 +111,10 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
     GroupRole.TREASURER: {
         Permission.MEMBER_VIEW, Permission.PROGRAMME_VIEW, Permission.PROGRAMME_EDIT,
         Permission.FINANCE_VIEW, Permission.FINANCE_POST,
-        Permission.WITHDRAWAL_REQUEST, Permission.PAYOUT_APPROVE,
+        # Prepares the money but does not sign it off: requesting and approving
+        # stay with different roles, and the payout itself is the step that
+        # actually sends money, so it belongs here rather than nowhere.
+        Permission.WITHDRAWAL_REQUEST, Permission.WITHDRAWAL_EXECUTE, Permission.PAYOUT_APPROVE,
         Permission.LOAN_VIEW, Permission.LOAN_DISBURSE, Permission.PROPOSAL_CREATE,
     },
     GroupRole.SECRETARY: {

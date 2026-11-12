@@ -291,13 +291,29 @@ def test_execute_posts_the_payout_once(programme, officers, memberships):
     paid = services.execute_payout(actor=executor, cycle=cycle)
     assert paid.status == RotationCycle.Status.PAID
 
+    # The money has to actually leave the programme. An earlier version of this
+    # test asserted that the beneficiary's *holding* grew by the payout, which
+    # read as plausible and was in fact describing a bug: the posting credited
+    # the pool back and debited a holding, so the pool never went down and the
+    # cycle was marked paid with the books unchanged.
+    amount = cycle.payout_amount_minor
+    contributed = programme.collected_total_minor()
+    pool = ledger.programme_pool(programme)
+    liability = ledger.programme_liability(programme)
+    settlement = ledger.provider_settlement("NGN")
+
+    assert contributed > 0
+    assert ledger.natural_balance(pool) == contributed - amount
+    assert ledger.natural_balance(liability) == -(contributed - amount)
+    assert ledger.natural_balance(settlement) >= amount
+
+    # A beneficiary is paid in cash, not given a wallet balance they must withdraw.
     holding = ledger.member_holding(programme.group, cycle.beneficiary.membership_id, "NGN")
-    assert ledger.natural_balance(holding) == 40_000
+    assert ledger.natural_balance(holding) == 0
 
     # Calling it again is a no-op, not a second payment.
     services.execute_payout(actor=executor, cycle=cycle)
-    holding.refresh_from_db()
-    assert ledger.natural_balance(holding) == 40_000
+    assert ledger.natural_balance(pool) == contributed - amount
 
 
 def test_execute_refuses_an_unapproved_payout(programme, officers, memberships):
@@ -465,3 +481,85 @@ def test_the_beneficiary_cannot_approve_a_withdrawal_for_themselves(programme, o
         services.decide_withdrawal(actor=membership.user, withdrawal=withdrawal, approve=True)
     assert caught.value.code == "self_approval_blocked"
     assert caught.value.details["reason"] == "beneficiary_cannot_approve"
+
+
+def test_a_payout_approved_by_an_owner_can_actually_be_sent(programme, officers, memberships):
+    """Nobody should be left holding an approval that cannot be executed.
+
+    The founder was the only role with the execute permission, and the founder
+    is also the officer who requests money. Combined with "the requester cannot
+    approve" and "the approver cannot execute", that made an owner-approved
+    payout impossible to pay: a deadlock that looks like a permissions bug only
+    when it is already too late.
+    """
+    from apps.groups.models import GroupRole, Permission
+
+    _fund_pool(programme, officers, memberships)
+    withdrawal = services.request_withdrawal(
+        actor=officers["chair"].user, programme=programme, amount_minor=5_000, reason="other",
+    )
+
+    owner = memberships["b"]
+    owner.role = GroupRole.OWNER
+    owner.save(update_fields=["role"])
+    # Programmes require two approvals by default, so a second officer signs.
+    second = memberships["a"]
+    second.role = GroupRole.ADMIN
+    second.save(update_fields=["role"])
+    services.decide_withdrawal(actor=owner.user, withdrawal=withdrawal, approve=True)
+    services.decide_withdrawal(actor=second.user, withdrawal=withdrawal, approve=True)
+    withdrawal.refresh_from_db()
+    assert withdrawal.status == services.WithdrawalRequest.Status.APPROVED
+
+    # The treasurer must be able to send it; otherwise the money is stranded.
+    assert Permission.WITHDRAWAL_EXECUTE in officers["treasurer"].permissions
+
+    services.execute_withdrawal(
+        actor=officers["treasurer"].user, withdrawal=withdrawal,
+        account_number="0123456789", bank_code="058", account_name="Test Beneficiary",
+    )
+    withdrawal.refresh_from_db()
+
+    # The important assertion is that it left the officer's hands at all: past
+    # the permission gate, through the ledger, and out to the provider. In the
+    # sandbox the provider itself fails, which is recorded and recoverable; a
+    # real credential is what turns that into `paid`.
+    from apps.payments.models import Disbursement
+
+    assert withdrawal.status != services.WithdrawalRequest.Status.APPROVED
+    disbursement = Disbursement.objects.order_by("-created_at").first()
+    assert disbursement is not None, "the payout never reached the provider"
+    assert disbursement.amount_minor == withdrawal.amount_minor
+    assert disbursement.destination_account_number == "0123456789"
+    assert disbursement.destination_bank_code == "058"
+
+
+def test_the_officer_who_approved_a_withdrawal_cannot_send_it(programme, officers, memberships):
+    from apps.groups.models import GroupRole
+
+    _fund_pool(programme, officers, memberships)
+    withdrawal = services.request_withdrawal(
+        actor=officers["chair"].user, programme=programme, amount_minor=5_000, reason="other",
+    )
+
+    # One member who can both approve and execute: the whole conflict in one person.
+    both = memberships["b"]
+    both.role = GroupRole.FOUNDER
+    both.save(update_fields=["role"])
+    second = memberships["a"]
+    second.role = GroupRole.ADMIN
+    second.save(update_fields=["role"])
+    services.decide_withdrawal(actor=both.user, withdrawal=withdrawal, approve=True)
+    services.decide_withdrawal(actor=second.user, withdrawal=withdrawal, approve=True)
+    withdrawal.refresh_from_db()
+    assert withdrawal.status == services.WithdrawalRequest.Status.APPROVED
+
+    with pytest.raises(PermissionDeniedError) as caught:
+        services.execute_withdrawal(
+            actor=both.user, withdrawal=withdrawal,
+            account_number="0123456789", bank_code="058", account_name="Test Beneficiary",
+        )
+    assert caught.value.code == "approver_cannot_execute"
+
+    withdrawal.refresh_from_db()
+    assert withdrawal.status == services.WithdrawalRequest.Status.APPROVED
