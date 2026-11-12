@@ -762,10 +762,25 @@ def decide_withdrawal(*, actor, withdrawal: WithdrawalRequest, approve: bool, co
             )
 
         actor_membership = require_membership(actor, programme.group)
+
+        # Separation of duties, enforced here rather than assumed from roles.
+        #
+        # A founder or owner holds both `withdrawal.request` and
+        # `withdrawal.approve`, so without this check one person could request
+        # money to someone else and sign it off alone. The role table is not
+        # enough: it is a permission table, and this is a conflict-of-interest
+        # rule that has to be applied to the specific request.
+        if withdrawal.requested_by_id == actor.pk:
+            raise PermissionDeniedError(
+                "You requested this payout, so another officer must approve it.",
+                code="self_approval_blocked",
+                details={"reason": "requester_cannot_approve"},
+            )
         if withdrawal.beneficiary and withdrawal.beneficiary.membership_id == actor_membership.pk:
             raise PermissionDeniedError(
                 "This withdrawal is for you, so another officer must approve it.",
                 code="self_approval_blocked",
+                details={"reason": "beneficiary_cannot_approve"},
             )
 
         WithdrawalApproval.objects.update_or_create(

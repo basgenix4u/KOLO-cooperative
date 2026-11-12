@@ -370,3 +370,98 @@ def test_overpayment_becomes_member_holding_not_lost_money(programme, officers, 
     assert ledger.balance_of(pool) == 15_000
     liability = ledger.programme_liability(programme)
     assert ledger.natural_balance(liability) == 15_000 - 5_000
+
+
+# ---------------------------------------------------------------------------
+# Separation of duties on withdrawals
+# ---------------------------------------------------------------------------
+#
+# Rotation payouts were covered. Withdrawals were not, and a founder or owner
+# holds both `withdrawal.request` and `withdrawal.approve`, so one officer could
+# request money and sign it off alone. Found by driving the live API.
+
+
+def _fund_pool(programme, officers, memberships, amount_each=10_000):
+    """Put real collected money in the programme pool."""
+    from apps.savings.models import Contribution, Participation
+
+    for membership in [officers["chair"], officers["treasurer"], memberships["a"], memberships["b"]]:
+        participation = Participation.objects.get(programme=programme, membership=membership)
+        contribution = Contribution.objects.create(
+            programme=programme, participation=participation, payer=membership.user,
+            amount_minor=amount_each, currency=programme.currency,
+            reference=f"SEP-{participation.pk.hex[:6]}",
+        )
+        services.settle_contribution(contribution, actor=officers["treasurer"].user)
+
+
+def test_one_officer_cannot_request_and_approve_a_withdrawal(programme, officers, memberships):
+    """The whole point of two signatures: a single officer is not enough."""
+    _fund_pool(programme, officers, memberships)
+
+    withdrawal = services.request_withdrawal(
+        actor=officers["chair"].user, programme=programme, amount_minor=5_000, reason="other",
+    )
+    assert withdrawal.status == "pending_approval"
+
+    with pytest.raises(PermissionDeniedError) as caught:
+        services.decide_withdrawal(
+            actor=officers["chair"].user, withdrawal=withdrawal, approve=True,
+        )
+    assert caught.value.code == "self_approval_blocked"
+    assert caught.value.details["reason"] == "requester_cannot_approve"
+
+    withdrawal.refresh_from_db()
+    assert withdrawal.status == "pending_approval", "the refusal must not move it to approved"
+
+
+def test_a_different_officer_can_approve_it(programme, officers, memberships):
+    """The requester is refused; somebody else is not.
+
+    Which roles may approve is a separate matter from the conflict-of-interest
+    rule: a treasurer can request a payout but not approve one, which is the
+    point of having two roles at all.
+    """
+    from apps.groups.models import GroupRole, Membership
+
+    _fund_pool(programme, officers, memberships)
+    withdrawal = services.request_withdrawal(
+        actor=officers["chair"].user, programme=programme, amount_minor=5_000, reason="other",
+    )
+
+    # Promote an existing member: a second officer who holds the approve
+    # permission but is not the person who asked.
+    second = memberships["b"]
+    second.role = GroupRole.ADMIN
+    second.save(update_fields=["role"])
+    assert "withdrawal.approve" in second.permissions
+
+    services.decide_withdrawal(actor=second.user, withdrawal=withdrawal, approve=True)
+    assert withdrawal.approval_records.filter(approved=True).count() == 1
+
+
+def test_the_beneficiary_cannot_approve_a_withdrawal_for_themselves(programme, officers, memberships):
+    _fund_pool(programme, officers, memberships)
+    participation = programme.participants.get(membership=memberships["a"])
+    withdrawal = services.request_withdrawal(
+        actor=officers["chair"].user, programme=programme, amount_minor=5_000, reason="member_exit",
+        beneficiary_participation_id=str(participation.pk),
+    )
+
+    from apps.groups.permissions import require_permission
+    from apps.groups.models import Permission
+
+    # Give the beneficiary the approve permission explicitly, so the only thing
+    # standing between them and their own payout is the conflict-of-interest rule.
+    from apps.groups.models import MembershipPermission
+
+    membership = memberships["a"]
+    MembershipPermission.objects.create(
+        membership=membership, permission=Permission.WITHDRAWAL_APPROVE, granted=True,
+    )
+    assert Permission.WITHDRAWAL_APPROVE in membership.permissions
+
+    with pytest.raises(PermissionDeniedError) as caught:
+        services.decide_withdrawal(actor=membership.user, withdrawal=withdrawal, approve=True)
+    assert caught.value.code == "self_approval_blocked"
+    assert caught.value.details["reason"] == "beneficiary_cannot_approve"
