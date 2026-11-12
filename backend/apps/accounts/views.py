@@ -42,7 +42,7 @@ from apps.accounts.services import (
     rotate_refresh_token,
     verify_code,
 )
-from apps.common.exceptions import DomainError, PermissionDeniedError
+from apps.common.exceptions import NotFoundError, DomainError, PermissionDeniedError
 from apps.common.throttling import ScopedBurstThrottle
 
 logger = logging.getLogger("kolo.security")
@@ -307,9 +307,18 @@ class PushTokenView(APIView):
         serializer = PushTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         device_id = request.data.get("device_id")
-        DeviceSession.objects.filter(pk=device_id, user=request.user).update(
-            push_token=serializer.validated_data["push_token"][:255], last_seen_at=timezone.now()
-        )
+        # Previously this reported success unconditionally. A device id that
+        # matched nothing — a stale id after reinstall, or a device belonging to
+        # somebody else — got `{"registered": true}` and the member silently
+        # never received a notification again. Say what happened instead.
+        updated = DeviceSession.objects.filter(
+            pk=device_id if device_id else None, user=request.user, revoked_at__isnull=True
+        ).update(push_token=serializer.validated_data["push_token"][:255], last_seen_at=timezone.now())
+        if not updated:
+            raise NotFoundError(
+                "That device session is no longer valid. Sign in again to receive notifications.",
+                code="device_not_found",
+            )
         return Response({"data": {"registered": True}})
 
 

@@ -207,3 +207,73 @@ def test_a_short_password_is_refused(api):
     response = _register(api, email="weak@example.com", password="short")
     assert response.status_code == 400
     assert not User.objects.filter(email="weak@example.com").exists()
+
+
+# ---------------------------------------------------------------------------
+# Push token registration
+# ---------------------------------------------------------------------------
+#
+# Push is how an officer learns that a payout is waiting for their signature.
+# Registering the token is part of the security path, not a convenience: an
+# officer who never receives the notification cannot approve, and the group's
+# money sits still.
+
+
+def _login_with_device(api, email):
+    _register(api, email=email)
+    response = _login(api, email)
+    assert response.status_code == 200
+    api.credentials(HTTP_AUTHORIZATION=f"Bearer {response.json()['data']['access']}")
+    return response.json()["data"]["device_id"]
+
+
+def test_registering_a_push_token_actually_stores_it(api):
+    from apps.accounts.models import DeviceSession
+
+    device_id = _login_with_device(api, "push-1@example.com")
+
+    response = api.post(
+        "/api/v1/auth/push-token/",
+        {"device_id": device_id, "push_token": "fcm-token-abc"},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["registered"] is True
+    assert DeviceSession.objects.get(pk=device_id).push_token == "fcm-token-abc"
+
+
+def test_a_push_token_for_an_unknown_device_is_refused_not_claimed(api):
+    """The endpoint used to answer `registered: true` for any device id.
+
+    A stale id after a reinstall produced a success response and stored no token,
+    so the member quietly stopped receiving notifications with no error anywhere
+    for anyone to notice.
+    """
+    _login_with_device(api, "push-2@example.com")
+
+    response = api.post(
+        "/api/v1/auth/push-token/",
+        {"device_id": "00000000-0000-0000-0000-000000000000", "push_token": "fcm-token-xyz"},
+        format="json",
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "device_not_found"
+
+
+def test_a_member_cannot_attach_a_push_token_to_someone_else_device(api):
+    from apps.accounts.models import DeviceSession
+
+    first = APIClient()
+    other_device = _login_with_device(first, "push-3@example.com")
+
+    _login_with_device(api, "push-4@example.com")
+    response = api.post(
+        "/api/v1/auth/push-token/",
+        {"device_id": other_device, "push_token": "hijack"},
+        format="json",
+    )
+
+    assert response.status_code == 404
+    assert DeviceSession.objects.get(pk=other_device).push_token == ""

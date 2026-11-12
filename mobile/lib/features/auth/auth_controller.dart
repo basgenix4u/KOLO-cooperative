@@ -60,7 +60,12 @@ class AuthController {
         message: 'Sign-in did not return a session. Please try again.',
       );
     }
-    await _tokens.save(access: access, refresh: refresh);
+    await _tokens.save(
+      access: access,
+      refresh: refresh,
+      // Kept so a push token can be attached to this session later.
+      deviceId: '${data['device_id'] ?? ''}',
+    );
     _ref.invalidate(sessionProvider);
 
     final user = data['user'];

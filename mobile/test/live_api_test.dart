@@ -32,7 +32,7 @@ class MemoryTokenStore extends TokenStore {
   Future<String?> refreshToken() async => _refresh;
 
   @override
-  Future<void> save({required String access, required String refresh}) async {
+  Future<void> save({required String access, required String refresh, String deviceId = ''}) async {
     _access = access;
     _refresh = refresh;
   }

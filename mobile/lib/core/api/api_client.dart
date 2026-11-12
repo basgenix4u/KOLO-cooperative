@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../notifications/push_registration.dart';
 import 'api_exception.dart';
 import 'token_store.dart';
 
@@ -13,7 +14,7 @@ import 'token_store.dart';
 ///     once, replay the request, and only then give up;
 ///  2. never replay a money request that might have succeeded;
 ///  3. turn transport problems into failures the UI can describe honestly.
-class ApiClient {
+class ApiClient implements ApiClientLike {
   ApiClient({required TokenStore tokens, String? baseUrl, Dio? dio})
       : _tokens = tokens,
         _dio = dio ?? Dio() {
@@ -132,6 +133,7 @@ class ApiClient {
     return _unwrap(data);
   }
 
+  @override
   Future<Map<String, dynamic>> post(
     String path, {
     Object? body,
