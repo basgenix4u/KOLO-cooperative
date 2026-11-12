@@ -6,6 +6,7 @@ import '../../../core/models/models.dart';
 import '../../../core/theme/kolo_theme.dart';
 import '../../../shared/widgets/common.dart';
 import '../../auth/auth_controller.dart';
+import '../../../core/offline/offline_cache.dart';
 import '../../savings/savings_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -16,6 +17,10 @@ class HomeScreen extends ConsumerWidget {
     final palette = context.kolo;
     final session = ref.watch(sessionProvider);
     final groups = ref.watch(myGroupsProvider);
+    // Whether what is on screen came from the network or from the last saved
+    // copy. The member is told either way; a silent fallback would let a stale
+    // list look like a live one.
+    final groupsFresh = ref.watch(myGroupsFreshProvider).valueOrNull;
     final obligations = ref.watch(myObligationsProvider);
 
     final name = session.valueOrNull?.displayName ?? 'there';
@@ -24,7 +29,7 @@ class HomeScreen extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(myGroupsProvider);
+            ref.invalidate(myGroupsFreshProvider);
             ref.invalidate(myObligationsProvider);
             ref.invalidate(myContributionsProvider);
           },
@@ -95,6 +100,16 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              if (groupsFresh != null && groupsFresh.fromCache)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                    child: CachedNotice(
+                      ageLabel: groupsFresh.ageLabel,
+                      onRetry: () => ref.invalidate(myGroupsFreshProvider),
+                    ),
+                  ),
+                ),
               ...switch (groups) {
                 AsyncValue(hasError: true, :final error?) => [
                     SliverToBoxAdapter(
@@ -102,7 +117,7 @@ class HomeScreen extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: ErrorNotice(
                           error: error,
-                          onRetry: () => ref.invalidate(myGroupsProvider),
+                          onRetry: () => ref.invalidate(myGroupsFreshProvider),
                         ),
                       ),
                     ),

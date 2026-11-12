@@ -4,12 +4,27 @@ import '../../core/api/api_client.dart';
 import '../../core/api/providers.dart';
 import '../../core/models/models.dart';
 import '../../core/models/withdrawal.dart';
+import '../../core/offline/offline_cache.dart';
 
 /// The member's groups.
+///
+/// Served from the network, falling back to the last saved copy when the device
+/// is offline. The payload is a name, a role and a member count — none of it is
+/// money, so a stale copy is a convenience rather than a risk, and the screen
+/// labels it either way.
+final myGroupsFreshProvider = FutureProvider<Fresh<List<GroupSummary>>>((ref) async {
+  final reader = await ref.watch(cachedListReaderProvider.future);
+  final fresh = await reader.read('/groups/');
+  return Fresh(
+    fresh.value.map(GroupSummary.fromJson).toList(),
+    fromCache: fresh.fromCache,
+    storedAt: fresh.storedAt,
+  );
+});
+
+/// The groups, without the provenance. Kept for screens that only render data.
 final myGroupsProvider = FutureProvider<List<GroupSummary>>((ref) async {
-  final client = ref.watch(apiClientProvider);
-  final rows = await client.getList('/groups/');
-  return rows.map(GroupSummary.fromJson).toList();
+  return (await ref.watch(myGroupsFreshProvider.future)).value;
 });
 
 final groupProvider = FutureProvider.family<GroupSummary, String>((ref, slug) async {
@@ -20,10 +35,22 @@ final groupProvider = FutureProvider.family<GroupSummary, String>((ref, slug) as
 
 /// Programmes inside one group. Filtered server-side, so a member never
 /// receives a programme they are not part of.
+///
+/// Cached like the group list: this is the shape of a savings plan, not a
+/// balance. Amounts owed and amounts collected always come from the server.
+final groupProgrammesFreshProvider =
+    FutureProvider.family<Fresh<List<Programme>>, String>((ref, slug) async {
+  final reader = await ref.watch(cachedListReaderProvider.future);
+  final fresh = await reader.read('/savings/programmes/?group=$slug');
+  return Fresh(
+    fresh.value.map(Programme.fromJson).toList(),
+    fromCache: fresh.fromCache,
+    storedAt: fresh.storedAt,
+  );
+});
+
 final groupProgrammesProvider = FutureProvider.family<List<Programme>, String>((ref, slug) async {
-  final client = ref.watch(apiClientProvider);
-  final rows = await client.getList('/savings/programmes/', query: {'group': slug});
-  return rows.map(Programme.fromJson).toList();
+  return (await ref.watch(groupProgrammesFreshProvider(slug).future)).value;
 });
 
 final programmeProvider = FutureProvider.family<Programme, String>((ref, id) async {
