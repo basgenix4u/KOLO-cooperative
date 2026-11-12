@@ -212,24 +212,37 @@ class AmountRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
+      // A long label yields to the amount. An amount is never wrapped, clipped
+      // or ellipsised: turning ₦1,250,000.00 into ₦1,25… would change the
+      // number the member is reading, which is worse than a longer row. At 320dp
+      // with 200% text this overflowed by several hundred pixels before the
+      // label was made flexible.
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: emphasise ? 15 : 14,
-              fontWeight: emphasise ? FontWeight.w600 : FontWeight.w400,
-              color: KoloColors.inkSoft,
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: emphasise ? 15 : 14,
+                fontWeight: emphasise ? FontWeight.w600 : FontWeight.w400,
+                color: KoloColors.inkSoft,
+              ),
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: emphasise ? 17 : 14,
-              fontWeight: emphasise ? FontWeight.w700 : FontWeight.w600,
-              color: valueColor ?? KoloColors.ink,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              softWrap: false,
+              overflow: TextOverflow.visible,
+              style: TextStyle(
+                fontSize: emphasise ? 17 : 14,
+                fontWeight: emphasise ? FontWeight.w700 : FontWeight.w600,
+                color: valueColor ?? KoloColors.ink,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ],

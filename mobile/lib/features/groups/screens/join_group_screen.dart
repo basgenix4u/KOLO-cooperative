@@ -188,6 +188,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                   hintText: 'Search by group name',
                   prefixIcon: Icon(Icons.search, color: palette.textFaint),
                   suffixIcon: IconButton(
+                    tooltip: 'Search groups',
                     icon: const Icon(Icons.arrow_forward_rounded),
                     onPressed: _busy ? null : _runSearch,
                   ),

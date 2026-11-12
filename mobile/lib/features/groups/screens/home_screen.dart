@@ -68,7 +68,7 @@ class HomeScreen extends ConsumerWidget {
                           backgroundColor: palette.accent,
                           child: Icon(Icons.person_outline, size: 18, color: palette.surface),
                         ),
-                        tooltip: 'Profile',
+                        tooltip: 'Your profile',
                       ),
                     ],
                   ),
@@ -215,14 +215,21 @@ class _DueCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            _amount(total, currency),
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-              letterSpacing: -1,
-              fontFeatures: [FontFeature.tabularFigures()],
+          // Scaled down to fit rather than cropped. This is the headline figure
+          // on the screen; at 200% text on a 320dp phone it overflowed the card,
+          // so a member using large text would have seen a truncated balance.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _amount(total, currency),
+              style: const TextStyle(
+                fontSize: 34,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: -1,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
             ),
           ),
           const SizedBox(height: 4),

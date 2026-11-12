@@ -27,7 +27,7 @@ class GroupDetailScreen extends ConsumerWidget {
             icon: const Icon(Icons.forum_outlined),
           ),
           IconButton(
-            tooltip: 'Votes',
+            tooltip: 'Proposals and votes',
             onPressed: () => context.push('/groups/$slug/vote'),
             icon: const Icon(Icons.how_to_vote_outlined),
           ),
