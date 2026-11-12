@@ -22,7 +22,27 @@ class ProgrammeDetailScreen extends ConsumerWidget {
     final cycles = ref.watch(programmeCyclesProvider(programmeId));
 
     return Scaffold(
-      appBar: AppBar(title: Text(programme.valueOrNull?.name ?? 'Programme')),
+      appBar: AppBar(
+        title: Text(programme.valueOrNull?.name ?? 'Programme'),
+        actions: [
+          // Money out gets its own screen: a payout needs an account number and
+          // a second officer, which does not belong in a header button.
+          IconButton(
+            tooltip: 'Payouts',
+            icon: const Icon(Icons.account_balance_outlined),
+            onPressed: programme.valueOrNull == null
+                ? null
+                : () => context.push(
+                      '/programmes/$programmeId/payouts',
+                      extra: {
+                        'name': programme.valueOrNull!.name,
+                        'currency': programme.valueOrNull!.currency,
+                        'slug': programme.valueOrNull!.groupSlug,
+                      },
+                    ),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(programmeProvider(programmeId));

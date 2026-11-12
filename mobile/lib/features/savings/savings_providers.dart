@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/providers.dart';
 import '../../core/models/models.dart';
+import '../../core/models/withdrawal.dart';
 
 /// The member's groups.
 final myGroupsProvider = FutureProvider<List<GroupSummary>>((ref) async {
@@ -158,3 +159,13 @@ class MoneyActions {
 }
 
 final moneyActionsProvider = Provider<MoneyActions>((ref) => MoneyActions(ref));
+
+
+/// Money leaving a programme. Officers only: the server refuses the rest, and
+/// this surfaces that refusal rather than hiding the list.
+final programmeWithdrawalsProvider =
+    FutureProvider.family<List<Withdrawal>, String>((ref, programmeId) async {
+  final client = ref.watch(apiClientProvider);
+  final rows = await client.getList('/savings/programmes/$programmeId/withdrawals/');
+  return rows.map(Withdrawal.fromJson).toList();
+});

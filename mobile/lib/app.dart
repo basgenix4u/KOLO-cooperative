@@ -16,6 +16,7 @@ import 'features/groups/screens/join_group_screen.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/savings/screens/contribute_screen.dart';
+import 'features/savings/screens/payouts_screen.dart';
 import 'features/savings/screens/programme_detail_screen.dart';
 import 'features/savings/screens/vote_screen.dart';
 
@@ -92,6 +93,21 @@ class _KoloAppState extends ConsumerState<KoloApp> {
           path: '/programmes/:id',
           builder: (_, state) => ProgrammeDetailScreen(programmeId: state.pathParameters['id']!),
           routes: [
+            GoRoute(
+              path: 'payouts',
+              builder: (_, state) {
+                // Passed through `extra` because the screen needs the group's
+                // pool figure. A cold deep link still works: it falls back to
+                // the programme id and asks the server for the rest.
+                final extra = (state.extra as Map?) ?? const {};
+                return PayoutsScreen(
+                  programmeId: state.pathParameters['id']!,
+                  programmeName: '${extra['name'] ?? 'Programme'}',
+                  currency: '${extra['currency'] ?? 'NGN'}',
+                  slug: '${extra['slug'] ?? ''}',
+                );
+              },
+            ),
             GoRoute(
               path: 'contribute',
               builder: (_, state) => ContributeScreen(

@@ -11,13 +11,17 @@ class ProgrammeListSerializer(serializers.ModelSerializer):
     collected_minor = serializers.SerializerMethodField()
     expected_minor = serializers.SerializerMethodField()
     progress_percent = serializers.SerializerMethodField()
+    # A programme's money sits in its group's pool. Sending the slug lets the
+    # client ask for that pool without a second round trip to discover it.
+    group_slug = serializers.CharField(source="group.slug", read_only=True)
+    group_name = serializers.CharField(source="group.name", read_only=True)
 
     class Meta:
         model = Programme
         fields = [
             "id", "name", "type", "status", "currency", "contribution_amount_minor", "frequency",
             "target_amount_minor", "start_date", "end_date", "participant_count", "collected_minor",
-            "expected_minor", "progress_percent", "created_at",
+            "expected_minor", "progress_percent", "created_at", "group_slug", "group_name",
         ]
 
     def get_participant_count(self, obj) -> int:

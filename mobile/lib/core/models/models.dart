@@ -106,9 +106,14 @@ class Programme {
     required this.participantCount,
     required this.progressPercent,
     required this.frequency,
+    this.groupSlug = '',
   });
 
   final String id;
+
+  /// Which group this programme belongs to. Needed to ask for group-level
+  /// figures beside it, such as the pool a payout would draw from.
+  final String groupSlug;
   final String name;
   final String type;
   final String status;
@@ -143,6 +148,7 @@ class Programme {
       participantCount: asInt('participant_count'),
       progressPercent: (json['progress_percent'] as num?)?.toDouble() ?? 0,
       frequency: '${json['frequency'] ?? 'monthly'}',
+      groupSlug: '${json['group_slug'] ?? ''}',
     );
   }
 }
