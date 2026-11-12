@@ -73,3 +73,6 @@ Thumbs.db
 
 # Local working notes — deliberately not published.
 VERIFICATION.md
+
+# Flutter web build output. Reproduced with `flutter build web --release`.
+mobile/build/
