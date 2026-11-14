@@ -3,10 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/models/models.dart';
-import '../../../core/theme/kolo_theme.dart';
-import '../../../shared/widgets/common.dart';
+import '../../../design/components.dart';
+import '../../../design/navigation.dart';
+import '../../../design/tokens.dart';
+import '../../../design/typography.dart';
+import '../../../shared/widgets/common.dart' show humanise;
 import '../../savings/savings_providers.dart';
 
+/// A group's home.
+///
+/// The screen answers, in order: which group is this and what am I here, what
+/// money is in play, what programmes are running, and what can I do about it.
+/// Officer powers are surfaced where they are used rather than collected in a
+/// settings drawer nobody opens.
 class GroupDetailScreen extends ConsumerWidget {
   const GroupDetailScreen({super.key, required this.slug});
 
@@ -18,220 +27,347 @@ class GroupDetailScreen extends ConsumerWidget {
     final programmes = ref.watch(groupProgrammesProvider(slug));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(group.value?.name ?? 'Group'),
-        actions: [
-          IconButton(
-            tooltip: 'Group chat',
-            onPressed: () => context.push('/groups/$slug/chat'),
-            icon: const Icon(Icons.forum_outlined),
-          ),
-          IconButton(
-            tooltip: 'Proposals and votes',
-            onPressed: () => context.push('/groups/$slug/vote'),
-            icon: const Icon(Icons.how_to_vote_outlined),
-          ),
-        ],
-      ),
+      backgroundColor: context.colors.ground,
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(groupProvider(slug));
           ref.invalidate(groupProgrammesProvider(slug));
         },
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          children: [
-            group.when(
-              data: (value) => _GroupHeader(group: value),
-              loading: () => const SizedBox(height: 80),
-              error: (error, _) => ErrorNotice(
-                error: error,
-                onRetry: () => ref.invalidate(groupProvider(slug)),
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              pinned: true,
+              backgroundColor: context.colors.ground,
+              surfaceTintColor: Colors.transparent,
+              leading: Padding(
+                padding: const EdgeInsets.only(left: KoloSpace.sm),
+                child: Center(
+                  child: KoloBackButton(
+                    onTap: () => context.canPop() ? context.pop() : context.go('/groups'),
+                  ),
+                ),
+              ),
+              leadingWidth: 60,
+              actions: [
+                _HeaderAction(
+                  icon: Icons.forum_outlined,
+                  tooltip: 'Group chat',
+                  onTap: () => context.push('/groups/$slug/chat'),
+                ),
+                _HeaderAction(
+                  icon: Icons.how_to_vote_outlined,
+                  tooltip: 'Proposals',
+                  onTap: () => context.push('/groups/$slug/vote'),
+                ),
+                const SizedBox(width: KoloSpace.sm),
+              ],
+              title: group.maybeWhen(
+                data: (g) => Text(g.name, style: context.text.titleMedium),
+                orElse: () => const SizedBox.shrink(),
               ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Programmes', style: Theme.of(context).textTheme.titleLarge),
-                if (group.value?.iAmOfficer == true)
-                  TextButton.icon(
-                    onPressed: () => _showProgrammeInfo(context),
-                    icon: const Icon(Icons.info_outline, size: 18),
-                    label: const Text('Officer tools'),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                KoloSpace.page, 0, KoloSpace.page, KoloSpace.hero),
+              sliver: SliverList.list(
+                children: [
+                  ...switch (group) {
+                    AsyncValue(hasError: true, :final error?) => [
+                        KoloErrorState(
+                          message: _friendly(error),
+                          onRetry: () => ref.invalidate(groupProvider(slug)),
+                        ),
+                      ],
+                    AsyncValue(isLoading: true, hasValue: false) => [
+                        const KoloSkeletonCard(height: 150),
+                      ],
+                    AsyncValue(:final value?) => [
+                        _GroupHeadline(group: value),
+                        const SizedBox(height: KoloSpace.section),
+                        _ActionsRow(group: value),
+                      ],
+                    _ => const [SizedBox.shrink()],
+                  },
+                  const SizedBox(height: KoloSpace.section),
+                  KoloSectionHeader(
+                    title: 'Programmes',
+                    inset: false,
+                    action: group.value?.iAmOfficer == true
+                        ? TextButton(
+                            onPressed: () => _showOfficerInfo(context),
+                            child: const Text('Officer tools'),
+                          )
+                        : null,
                   ),
-              ],
+                  const SizedBox(height: KoloSpace.md),
+                  ...switch (programmes) {
+                    AsyncValue(hasError: true, :final error?) => [
+                        KoloErrorState(
+                          message: _friendly(error),
+                          title: 'Programmes did not load',
+                          onRetry: () => ref.invalidate(groupProgrammesProvider(slug)),
+                        ),
+                      ],
+                    AsyncValue(isLoading: true, hasValue: false) => [
+                        const KoloSkeletonCard(height: 108),
+                        const SizedBox(height: KoloSpace.md),
+                        const KoloSkeletonCard(height: 108),
+                      ],
+                    AsyncValue(:final value?) => value.isEmpty
+                        ? [
+                            KoloEmptyState(
+                              icon: Icons.savings_outlined,
+                              title: 'No programmes yet',
+                              message:
+                                  'A programme is what holds the money: who contributes, '
+                                  'how often, and the order payouts go out. An officer creates '
+                                  'the first one.',
+                              action: null,
+                            ),
+                          ]
+                        : [
+                            for (final p in value) ...[
+                              _ProgrammeTile(programme: p),
+                              const SizedBox(height: KoloSpace.md),
+                            ],
+                          ],
+                    _ => const [SizedBox.shrink()],
+                  },
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            ...switch (programmes) {
-              AsyncValue(hasError: true, :final error?) => [
-                  ErrorNotice(error: error, onRetry: () => ref.invalidate(groupProgrammesProvider(slug))),
-                ],
-              AsyncValue(isLoading: true, hasValue: false) => [
-                  const Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                ],
-              AsyncValue(:final value?) => value.isEmpty
-                  ? [
-                      const EmptyState(
-                        icon: Icons.savings_outlined,
-                        title: 'No programmes yet',
-                        message: 'A programme is where contributions and payouts happen. '
-                            'Your officers create the first one.',
-                      ),
-                    ]
-                  : value.map((programme) => _ProgrammeTile(programme: programme)).toList(),
-              _ => const [SizedBox.shrink()],
-            },
           ],
         ),
       ),
     );
   }
 
-  void _showProgrammeInfo(BuildContext context) {
+  static String _friendly(Object error) {
+    final text = error.toString();
+    if (text.contains('not_a_member') || text.contains('403')) {
+      return 'You are not a member of this group. Ask an officer for an invitation.';
+    }
+    if (text.contains('network') || text.contains('SocketException')) {
+      return 'KOLO could not be reached. Check your connection.';
+    }
+    return 'This group could not be loaded. Pull down to try again.';
+  }
+
+  void _showOfficerInfo(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (context) {
-        final palette = context.kolo;
-        return Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+      backgroundColor: context.colors.surface,
+      builder: (sheetContext) => KoloSheet(
+        title: 'Officer tools',
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Officer tools', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
             Text(
-              'Recording a cash contribution and approving a rotation payout are officer '
-              'actions. They are kept in the app and signed with your account, so a payout '
-              'always shows who approved it.',
-              style: Theme.of(context).textTheme.bodyMedium,
+              'Recording a cash contribution and paying out a rotation are officer '
+              'actions. They are kept in the app and signed with your account, so a '
+              'payout always shows who approved it.',
+              style: Theme.of(sheetContext).textTheme.bodyMedium,
             ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: palette.moneySoft,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.shield_outlined, size: 18, color: palette.warning),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'A payout needs two different officers: one to approve it, another to '
-                      'execute it. The person receiving it cannot approve or execute it.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: palette.text),
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: KoloSpace.lg),
+            KoloNotice(
+              message:
+                  'A payout needs two different officers: one to approve it, another to '
+                  'execute it. The person receiving it cannot approve or execute their own '
+                  'payout.',
+              tone: KoloNoticeTone.warning,
+              icon: Icons.shield_outlined,
             ),
           ],
         ),
-        );
-      },
+      ),
     );
   }
 }
 
-class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({required this.group});
+class _HeaderAction extends StatelessWidget {
+  const _HeaderAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onTap,
+      icon: Icon(icon, size: 21),
+      color: c.textSoft,
+    );
+  }
+}
+
+/// The identity block: who this group is, what the member's standing is, and the
+/// two figures that matter — how many people are in it and what currency the
+/// money is kept in.
+class _GroupHeadline extends StatelessWidget {
+  const _GroupHeadline({required this.group});
 
   final GroupSummary group;
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: palette.divider),
-      ),
+    final c = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: c.accent,
+                borderRadius: BorderRadius.circular(KoloRadius.lg),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G',
+                style: TextStyle(
+                  fontFamily: KoloType.family,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: c.accentOn,
+                ),
+              ),
+            ),
+            const SizedBox(width: KoloSpace.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Your standing',
+                    style: KoloType.eyebrow(c),
+                  ),
+                  const SizedBox(height: KoloSpace.xs + 2),
+                  Text(
+                    _capitalise(humanise(group.myRole)),
+                    style: context.text.headlineSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: KoloSpace.sm),
+                  Wrap(
+                    spacing: KoloSpace.sm,
+                    runSpacing: KoloSpace.sm,
+                    children: [
+                      KoloStatusPill(
+                        status: group.isPrivate ? 'restricted' : 'active',
+                        label: group.isPrivate ? 'Private' : 'Public',
+                        compact: true,
+                      ),
+                      if (group.requiresApproval)
+                        KoloStatusPill(
+                          status: 'pending',
+                          label: 'Approval needed',
+                          compact: true,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: KoloSpace.xl),
+        Row(
+          children: [
+            _Fact(
+              icon: Icons.people_alt_outlined,
+              value: '${group.memberCount}',
+              label: group.memberCount == 1 ? 'member' : 'members',
+            ),
+            _Fact(
+              icon: Icons.payments_outlined,
+              value: group.currency,
+              label: 'currency',
+            ),
+            _Fact(
+              icon: Icons.category_outlined,
+              value: _capitalise(humanise(group.category)),
+              label: 'type',
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _Fact extends StatelessWidget {
+  const _Fact({required this.icon, required this.value, required this.label});
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: palette.accent,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                  child: Text(
-                    group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G',
-                    style: TextStyle(
-                      color: palette.surface,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(group.name, style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        StatusPill(status: group.myRole, label: 'You: ${humanise(group.myRole)}'),
-                        const SizedBox(width: 8),
-                        if (group.isPrivate)
-                          Icon(Icons.lock_outline, size: 14, color: palette.textFaint),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Icon(icon, size: 15, color: c.textFaint),
+          const SizedBox(height: KoloSpace.sm),
+          Text(
+            value,
+            style: context.text.titleMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _Stat(label: 'Members', value: '${group.memberCount}'),
-              _Stat(label: 'Currency', value: group.currency),
-              _Stat(label: 'Category', value: humanise(group.category)),
-            ],
-          ),
+          Text(label, style: context.text.bodySmall),
         ],
       ),
     );
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
+/// The things a member actually comes here to do. Two primary actions at most;
+/// conversation and governance live in the header where they belong.
+class _ActionsRow extends StatelessWidget {
+  const _ActionsRow({required this.group});
 
-  final String label;
-  final String value;
+  final GroupSummary group;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 2),
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-        ],
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 50,
+            child: FilledButton.icon(
+              onPressed: () => context.push('/contributions'),
+              icon: const Icon(Icons.add_rounded, size: 19),
+              label: const Text('Contribute'),
+            ),
+          ),
+        ),
+        const SizedBox(width: KoloSpace.md),
+        Expanded(
+          child: SizedBox(
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('/groups/${group.slug}/vote'),
+              icon: const Icon(Icons.how_to_vote_outlined, size: 18),
+              label: const Text('Vote'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -243,55 +379,100 @@ class _ProgrammeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
+    final c = context.colors;
     final target = programme.target.minor > 0 ? programme.target : programme.expected;
-    final percent = target.minor > 0
-        ? (programme.collected.minor / target.minor * 100).clamp(0, 100).toDouble()
-        : 0.0;
+    final percent = programme.progressPercent > 0
+        ? programme.progressPercent
+        : (target.minor > 0
+            ? (programme.collected.minor / target.minor * 100).clamp(0, 100).toDouble()
+            : 0.0);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: KoloCard(
-        onTap: () => context.push('/programmes/${programme.id}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(programme.name, style: Theme.of(context).textTheme.titleMedium),
+    return KoloCard(
+      onTap: () => context.push('/programmes/${programme.id}'),
+      padding: const EdgeInsets.all(KoloSpace.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      programme.name,
+                      style: context.text.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${_capitalise(humanise(programme.type))} · '
+                      '${programme.participantCount} participating',
+                      style: context.text.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                StatusPill(status: programme.status),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '${humanise(programme.type)} · ${programme.participantCount} participating · '
-              '${programme.contributionAmount.format()}/month',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 14),
-            CollectionProgress(percent: percent),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${programme.collected.format()} collected',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: palette.textSoft,
-                        fontWeight: FontWeight.w600,
+              ),
+              const SizedBox(width: KoloSpace.sm),
+              KoloStatusPill(status: programme.status, compact: true),
+            ],
+          ),
+          const SizedBox(height: KoloSpace.lg),
+          KoloProgress(value: percent / 100),
+          const SizedBox(height: KoloSpace.sm + 2),
+          Row(
+            children: [
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: programme.collected.format(),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: c.text,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
+                      TextSpan(
+                        text: ' of ${target.format()}',
+                        style: TextStyle(color: c.textSoft),
+                      ),
+                    ],
+                  ),
+                  style: context.text.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  'of ${target.format()}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              const SizedBox(width: KoloSpace.sm),
+              Text(
+                programme.contributionAmount.format(),
+                style: KoloType.money(c, size: 12.5, color: c.textSoft),
+              ),
+              Text(
+                '/${_shortFrequency(programme.frequency)}',
+                style: context.text.bodySmall,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
+
+  static String _shortFrequency(String frequency) => switch (frequency.toLowerCase()) {
+        'weekly' => 'wk',
+        'daily' => 'day',
+        'biweekly' => '2wk',
+        'quarterly' => 'qtr',
+        _ => 'mo',
+      };
 }
+
+String _capitalise(String value) =>
+    value.isEmpty ? value : value[0].toUpperCase() + value.substring(1);

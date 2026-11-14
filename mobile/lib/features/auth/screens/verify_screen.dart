@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_exception.dart';
-import '../../../core/theme/kolo_theme.dart';
+import '../../../design/components.dart';
+import '../../../design/tokens.dart';
+import '../../../design/typography.dart';
 import '../auth_controller.dart';
+import 'auth_scaffold.dart';
 
 /// Verifying proves the member controls the address. Until then the account
 /// exists but cannot receive or send money, which is why this screen is a wall,
@@ -21,15 +25,36 @@ class VerifyScreen extends ConsumerStatefulWidget {
 
 class _VerifyScreenState extends ConsumerState<VerifyScreen> {
   final _code = TextEditingController();
+  Timer? _countdown;
+  int _cooldown = 0;
   bool _busy = false;
   bool _resending = false;
   String? _error;
   String? _notice;
 
   @override
+  void initState() {
+    super.initState();
+    // The first code was sent moments ago in RegisterScreen, so the resend
+    // starts on cooldown rather than inviting an immediate duplicate.
+    _startCooldown(30);
+  }
+
+  @override
   void dispose() {
+    _countdown?.cancel();
     _code.dispose();
     super.dispose();
+  }
+
+  void _startCooldown(int seconds) {
+    _countdown?.cancel();
+    setState(() => _cooldown = seconds);
+    _countdown = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      setState(() => _cooldown = _cooldown > 0 ? _cooldown - 1 : 0);
+      if (_cooldown == 0) timer.cancel();
+    });
   }
 
   Future<void> _verify() async {
@@ -38,6 +63,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
       setState(() => _error = 'Enter the full code from your email.');
       return;
     }
+    FocusScope.of(context).unfocus();
     setState(() {
       _busy = true;
       _error = null;
@@ -46,18 +72,19 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
     try {
       await ref.read(authControllerProvider).verifyCode(code: code);
       if (!mounted) return;
-      // Verification needs a session; sign in was already done at registration
-      // time only if the backend issued tokens, so route to sign-in otherwise.
+      // Verification needs a session; registration does not sign the member in,
+      // so anything other than an existing session lands on sign-in.
       context.go('/login');
     } on ApiException catch (error) {
       if (!mounted) return;
-      setState(() => _error = error.userMessage);
+      setState(() => _error = _friendly(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _resend() async {
+    if (_cooldown > 0 || _resending) return;
     setState(() {
       _resending = true;
       _error = null;
@@ -65,89 +92,117 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
     });
     try {
       await ref.read(authControllerProvider).requestCode(channel: 'email');
-      if (mounted) setState(() => _notice = 'A new code is on its way.');
+      if (!mounted) return;
+      setState(() => _notice = 'A new code is on its way to ${widget.email}.');
+      _startCooldown(60);
     } on ApiException catch (error) {
-      if (mounted) setState(() => _error = error.userMessage);
+      if (mounted) setState(() => _error = _friendly(error));
     } finally {
       if (mounted) setState(() => _resending = false);
     }
   }
 
+  String _friendly(ApiException error) {
+    switch (error.code) {
+      case 'invalid_code':
+      case 'code_invalid':
+        return 'That code is not right. Check the six digits and try again.';
+      case 'code_expired':
+        return 'That code has expired. Send a new one.';
+      case 'too_many_attempts':
+        return 'Too many tries. Wait a few minutes before asking for another code.';
+      case 'network_error':
+      case 'timeout':
+        return 'We could not reach KOLO. Check your connection and try again.';
+      default:
+        return error.userMessage;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
-    return Scaffold(
-      appBar: AppBar(),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final c = context.colors;
+    return AuthScaffold(
+      title: 'Confirm your email',
+      subtitle: 'We sent a six-digit code to ${widget.email}. '
+          'Entering it proves the address is yours.',
+      showBack: true,
+      error: _error == null ? null : AuthError(message: _error!),
+      notice: _notice == null
+          ? null
+          : KoloNotice(
+              message: _notice!,
+              tone: KoloNoticeTone.positive,
+              icon: Icons.mark_email_read_outlined,
+            ),
+      children: [
+        Text('YOUR CODE', style: KoloType.eyebrow(c).copyWith(color: c.textSoft)),
+        const SizedBox(height: KoloSpace.sm),
+        CodeField(
+          controller: _code,
+          enabled: !_busy,
+          onChanged: (_) {
+            if (_error != null) setState(() => _error = null);
+          },
+          onComplete: (_) => _verify(),
+        ),
+        const SizedBox(height: KoloSpace.xl),
+        KoloSubmitButton(
+          label: 'Confirm email',
+          busyLabel: 'Confirming…',
+          busy: _busy,
+          onPressed: _verify,
+        ),
+        const SizedBox(height: KoloSpace.lg),
+        Center(
+          child: TextButton(
+            onPressed: (_cooldown > 0 || _resending) ? null : _resend,
+            child: Text(
+              _resending
+                  ? 'Sending…'
+                  : _cooldown > 0
+                      ? 'Send a new code in ${_cooldown}s'
+                      : 'Send a new code',
+            ),
+          ),
+        ),
+        const SizedBox(height: KoloSpace.xxl),
+        _WhyThisMatters(),
+      ],
+    );
+  }
+}
+
+/// Explains the gate rather than leaving the member to guess why a screen is
+/// standing between them and the app. A wall without a reason is a wall people
+/// try to climb.
+class _WhyThisMatters extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return KoloCard(
+      padding: const EdgeInsets.all(KoloSpace.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text('Check your email', style: Theme.of(context).textTheme.displaySmall),
-              const SizedBox(height: 8),
+              Icon(Icons.shield_outlined, size: 15, color: c.textSoft),
+              const SizedBox(width: KoloSpace.sm),
               Text(
-                widget.email.isEmpty
-                    ? 'Enter the code we emailed you.'
-                    : 'We sent a code to ${widget.email}.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 28),
-              if (_error != null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: palette.dangerSoft,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(_error!, style: TextStyle(color: palette.danger)),
-                ),
-                const SizedBox(height: 16),
-              ],
-              if (_notice != null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: palette.successSoft,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(_notice!, style: TextStyle(color: palette.success)),
-                ),
-                const SizedBox(height: 16),
-              ],
-              TextField(
-                controller: _code,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 26, letterSpacing: 10, fontWeight: FontWeight.w700),
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(8)],
-                decoration: const InputDecoration(hintText: '••••••'),
-                onSubmitted: (_) => _verify(),
-              ),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _busy ? null : _verify,
-                child: _busy
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Verify'),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton(
-                  onPressed: _resending ? null : _resend,
-                  child: Text(_resending ? 'Sending…' : 'Send a new code'),
-                ),
+                'WHY THIS STEP EXISTS',
+                style: KoloType.eyebrow(c),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: KoloSpace.md),
+          Text(
+            'A confirmed address is how your group reaches you about payouts, '
+            'and how you recover an account. Cards and codes cannot hold money '
+            'in KOLO until this is done — for everyone’s protection, including yours.',
+            style: context.text.bodySmall?.copyWith(color: c.textSoft, height: 1.5),
+          ),
+        ],
       ),
     );
   }

@@ -29,7 +29,11 @@ import 'features/savings/screens/programme_detail_screen.dart';
 import 'features/savings/screens/vote_screen.dart';
 
 class KoloApp extends ConsumerStatefulWidget {
-  const KoloApp({super.key});
+  const KoloApp({super.key, this.initialLocation});
+
+  /// Where the router starts. Null in production, where the redirect decides
+  /// based on the session; set by the screenshot harness to render one screen.
+  final String? initialLocation;
 
   @override
   ConsumerState<KoloApp> createState() => _KoloAppState();
@@ -90,7 +94,7 @@ class _KoloAppState extends ConsumerState<KoloApp> {
 
   GoRouter _buildRouter() {
     return GoRouter(
-      initialLocation: '/',
+      initialLocation: widget.initialLocation ?? '/',
       // A single redirect decides signed-in vs signed-out. Screens never each
       // re-check auth, which is how guard logic drifts out of sync.
       redirect: (context, state) {

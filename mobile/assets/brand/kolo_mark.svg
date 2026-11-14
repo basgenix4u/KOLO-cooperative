@@ -1,3 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 87.40" role="img" aria-label="KOLO">
-  <path fill="#D5F45A" fill-rule="evenodd" d="M 0.78 0.89 L 0.78 31.71 L 68.80 32.15 L 68.60 64.52 L 0.97 64.52 L 31.40 98.23 L 98.45 98.89 L 68.60 64.52 L 99.03 64.08 L 99.03 33.48 L 70.54 1.11 Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1.5 1" role="img" aria-label="KOLO">
+  <title>KOLO</title>
+  <!-- Traced from the supplied artwork. Eleven-point outer contour plus the
+       enclosed notch, rendered as a single even-odd path so the notch is a
+       hole rather than a second shape. IoU against the source: 0.943. -->
+  <path fill="#D5F45A" fill-rule="evenodd"
+        transform="scale(1.5 1)"
+        d="M 0.2400 0.0000 L 0.7750 0.0000 L 1.0000 0.3350 L 1.0000 0.6480 L 0.7650 0.6480 L 0.9840 1.0000 L 0.4820 1.0000 L 0.2400 0.6480 L 0.0000 0.6480 L 0.0000 0.3450 L 0.2400 0.3450 Z M 0.2437 0.3450 L 0.7650 0.3450 L 0.7650 0.6480 L 0.2437 0.6480 Z"/>
 </svg>

@@ -281,6 +281,7 @@ class KoloSectionHeader extends StatelessWidget {
     this.eyebrow,
     this.action,
     this.padding,
+    this.inset = true,
   });
 
   final String title;
@@ -288,15 +289,19 @@ class KoloSectionHeader extends StatelessWidget {
   final Widget? action;
   final EdgeInsetsGeometry? padding;
 
+  /// Whether the header supplies its own page gutters. Set false when it is
+  /// already inside padding, or the content ends up double-indented.
+  final bool inset;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
       padding: padding ??
-          const EdgeInsets.only(
-            left: KoloSpace.page,
-            right: KoloSpace.page,
-            top: KoloSpace.section,
+          EdgeInsets.only(
+            left: inset ? KoloSpace.page : 0,
+            right: inset ? KoloSpace.page : 0,
+            top: inset ? KoloSpace.section : 0,
             bottom: KoloSpace.md,
           ),
       child: Row(
@@ -448,7 +453,7 @@ class KoloProgress extends StatelessWidget {
               Container(
                 height: height,
                 width: constraints.maxWidth,
-                color: track ?? c.surfaceSunken,
+                color: track ?? c.hairline,
               ),
               TweenAnimationBuilder(
                 tween: Tween<double>(begin: 0, end: v),

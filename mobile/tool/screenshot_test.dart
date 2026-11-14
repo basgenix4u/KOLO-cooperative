@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:kolo/app.dart';
 import 'package:kolo/core/api/providers.dart';
 import 'package:kolo/core/api/token_store.dart';
@@ -130,6 +131,34 @@ Future<void> _loadFonts() async {
   }
 }
 
+final _programme = Programme(
+  id: 'prg_1',
+  groupSlug: 'berkley-square-ajo',
+  name: 'Monthly rotation',
+  type: 'rotating',
+  status: 'active',
+  currency: 'NGN',
+  contributionAmount: Money(5000000, 'NGN'),
+  collected: Money(17500000, 'NGN'),
+  expected: Money(24000000, 'NGN'),
+  target: Money(24000000, 'NGN'),
+  participantCount: 12,
+  progressPercent: 72.9,
+  frequency: 'monthly',
+);
+
+final _detailGroup = GroupSummary(
+  id: 'grp_1',
+  name: 'Berkley Square Ajo',
+  slug: 'berkley-square-ajo',
+  category: 'family',
+  visibility: 'private',
+  currency: 'NGN',
+  memberCount: 12,
+  myRole: 'treasurer',
+  requiresApproval: true,
+);
+
 Widget _app({required ThemeMode mode, required bool signedIn}) {
   return ProviderScope(
     overrides: [
@@ -141,6 +170,9 @@ Widget _app({required ThemeMode mode, required bool signedIn}) {
       myGroupsProvider.overrideWith((ref) async => _groups),
       myObligationsProvider.overrideWith((ref) async => _obligations),
       myContributionsProvider.overrideWith((ref) async => _contributions),
+      groupProvider('berkley-square-ajo').overrideWith((ref) async => _detailGroup),
+      groupProgrammesProvider('berkley-square-ajo')
+          .overrideWith((ref) async => [_programme]),
       themeModeProvider.overrideWith(() => _ForcedMode(mode)),
     ],
     child: const KoloApp(),
@@ -154,6 +186,7 @@ Future<void> _shoot(
   required bool signedIn,
   Size size = const Size(390, 844),
   double dpr = 3,
+  String? route,
 }) async {
   tester.view.physicalSize = size * dpr;
   tester.view.devicePixelRatio = dpr;
@@ -163,6 +196,15 @@ Future<void> _shoot(
   await tester.runAsync(_loadFonts);
   await tester.pumpWidget(_app(mode: mode, signedIn: signedIn));
   await tester.pumpAndSettle(const Duration(seconds: 2));
+
+  // Navigate *after* mount. Passing an initial location instead lets GoRouter's
+  // redirect run against the pre-mount state, which bounces straight to
+  // /welcome and silently photographs the wrong screen.
+  if (route != null) {
+    final router = GoRouter.of(tester.element(find.byType(Navigator).first));
+    router.go(route);
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+  }
 
   final dir = Directory('screenshots');
   if (!dir.existsSync()) dir.createSync(recursive: true);
@@ -192,5 +234,33 @@ void main() {
   testWidgets('home small screen', (t) async {
     await _shoot(t, '04_home_small', mode: ThemeMode.light, signedIn: true,
         size: const Size(320, 640), dpr: 2);
+  });
+  testWidgets('login light', (t) async {
+    await _shoot(t, '05_login', mode: ThemeMode.light, signedIn: false,
+        route: '/login');
+  });
+  testWidgets('register light', (t) async {
+    await _shoot(t, '06_register', mode: ThemeMode.light, signedIn: false,
+        route: '/register');
+  });
+  testWidgets('verify light', (t) async {
+    await _shoot(t, '07_verify', mode: ThemeMode.light, signedIn: false,
+        route: '/verify?email=abdulbasit%40example.com');
+  });
+  testWidgets('login dark', (t) async {
+    await _shoot(t, '08_login_dark', mode: ThemeMode.dark, signedIn: false,
+        route: '/login');
+  });
+  testWidgets('group detail light', (t) async {
+    await _shoot(t, '10_group_detail', mode: ThemeMode.light, signedIn: true,
+        route: '/groups/berkley-square-ajo');
+  });
+  testWidgets('group detail dark', (t) async {
+    await _shoot(t, '11_group_detail_dark', mode: ThemeMode.dark, signedIn: true,
+        route: '/groups/berkley-square-ajo');
+  });
+  testWidgets('register small screen', (t) async {
+    await _shoot(t, '09_register_small', mode: ThemeMode.light, signedIn: false,
+        size: const Size(320, 640), dpr: 2, route: '/register');
   });
 }

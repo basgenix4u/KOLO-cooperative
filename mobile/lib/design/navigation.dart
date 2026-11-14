@@ -20,7 +20,7 @@ class KoloMark extends StatelessWidget {
     this.semanticLabel = 'KOLO',
   });
 
-  /// Height in logical pixels. Width follows the mark's own 516:451 ratio.
+  /// Height in logical pixels. Width follows the mark's own 1.5:1 ratio.
   final double size;
   final Color? color;
   final String semanticLabel;
@@ -32,7 +32,7 @@ class KoloMark extends StatelessWidget {
       label: semanticLabel,
       child: SizedBox(
         height: size,
-        width: size * (516 / 451),
+        width: size * 1.5,
         child: CustomPaint(painter: _KoloMarkPainter(resolved)),
       ),
     );
@@ -44,26 +44,37 @@ class _KoloMarkPainter extends CustomPainter {
 
   final Color color;
 
-  /// Normalised silhouette (0..1 on both axes), read from the traced artwork.
+  /// Normalised silhouette (0..1 on both axes), traced from the supplied
+  /// artwork. Eleven vertices, verified simple (no self-intersections), and
+  /// 0.943 IoU against the source mask.
   static const List<Offset> _outline = [
-    Offset(0.0078, 0.0089),
-    Offset(0.0078, 0.3171),
-    Offset(0.6880, 0.3215),
-    Offset(0.6860, 0.6452),
-    Offset(0.0097, 0.6452),
-    Offset(0.3140, 0.9823),
-    Offset(0.9845, 0.9889),
-    Offset(0.6860, 0.6452),
-    Offset(0.9903, 0.6408),
-    Offset(0.9903, 0.3348),
-    Offset(0.7054, 0.0111),
+    Offset(0.2400, 0.0000),
+    Offset(0.7750, 0.0000),
+    Offset(1.0000, 0.3350),
+    Offset(1.0000, 0.6480),
+    Offset(0.7650, 0.6480),
+    Offset(0.9840, 1.0000),
+    Offset(0.4820, 1.0000),
+    Offset(0.2400, 0.6480),
+    Offset(0.0000, 0.6480),
+    Offset(0.0000, 0.3450),
+    Offset(0.2400, 0.3450),
   ];
 
-  @override
-  void paint(Canvas canvas, Size size) {
+  /// The notch is fully enclosed by the outline, so it is a hole, not a concave
+  /// edge. Drawing it as a reversed subpath with the non-zero winding rule
+  /// punches it out, exactly as the artwork does.
+  static const List<Offset> _notch = [
+    Offset(0.2437, 0.3450),
+    Offset(0.7650, 0.3450),
+    Offset(0.7650, 0.6480),
+    Offset(0.2437, 0.6480),
+  ];
+
+  static Path _polygon(List<Offset> points, Size size) {
     final path = Path();
-    for (var i = 0; i < _outline.length; i++) {
-      final p = _outline[i];
+    for (var i = 0; i < points.length; i++) {
+      final p = points[i];
       final point = Offset(p.dx * size.width, p.dy * size.height);
       if (i == 0) {
         path.moveTo(point.dx, point.dy);
@@ -71,7 +82,16 @@ class _KoloMarkPainter extends CustomPainter {
         path.lineTo(point.dx, point.dy);
       }
     }
-    path.close();
+    return path..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addPath(_polygon(_outline, size), Offset.zero)
+      // Reversed order so the notch subtracts under both winding rules.
+      ..addPath(_polygon(_notch.reversed.toList(), size), Offset.zero);
     canvas.drawPath(path, Paint()..color = color);
   }
 

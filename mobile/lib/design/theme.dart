@@ -136,7 +136,9 @@ class KoloTheme {
       // --- Inputs ------------------------------------------------------------
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: c.surfaceSunken,
+        // Raised, not sunken. `surfaceSunken` is darker than the page on a Stone
+        // ground, which reads as a disabled control rather than an input.
+        fillColor: c.surfaceRaised,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: KoloSpace.lg,
           vertical: KoloSpace.lg,
