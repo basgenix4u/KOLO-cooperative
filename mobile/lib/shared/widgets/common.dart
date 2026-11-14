@@ -14,13 +14,18 @@ class KoloCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Colours come from the active palette, not from the light-theme constants.
+    // The old hardcoded `KoloColors.white` painted every card white in dark
+    // mode, which is exactly the "light theme with different background" result
+    // dark mode is supposed to avoid.
+    final palette = context.kolo;
     final content = Container(
       width: double.infinity,
       padding: padding ?? const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: color ?? KoloColors.white,
+        color: color ?? palette.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: KoloColors.divider),
+        border: Border.all(color: palette.divider),
       ),
       child: child,
     );
@@ -178,8 +183,8 @@ class EmptyState extends StatelessWidget {
             Container(
               width: 64,
               height: 64,
-              decoration: const BoxDecoration(color: KoloColors.cloud, shape: BoxShape.circle),
-              child: Icon(icon, size: 30, color: KoloColors.inkFaint),
+              decoration: BoxDecoration(color: context.kolo.surfaceHigh, shape: BoxShape.circle),
+              child: Icon(icon, size: 30, color: context.kolo.textFaint),
             ),
             const SizedBox(height: 18),
             Text(title, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
@@ -281,7 +286,41 @@ Future<void> showMessage(BuildContext context, String message, {bool isError = f
   messenger.showSnackBar(
     SnackBar(
       content: Text(message),
-      backgroundColor: isError ? KoloColors.danger : KoloColors.ink,
+      backgroundColor: isError ? KoloColors.danger : context.kolo.text,
+      showCloseIcon: true,
     ),
   );
+}
+
+/// An [AlertDialog] that follows the active palette.
+///
+/// Flutter renamed `DialogTheme` to `DialogThemeData` in 3.27, so
+/// `ThemeData.dialogTheme` cannot hold a colour on both of the Flutter versions
+/// this app supports. Rather than leave dialogs unstyled — in dark mode a
+/// default dialog came out as a bright near-white panel over a dark screen —
+/// the surface colour is applied per dialog here. Call sites stay unchanged
+/// apart from the constructor name.
+class KoloDialog extends StatelessWidget {
+  const KoloDialog({
+    super.key,
+    required this.title,
+    required this.content,
+    this.actions,
+  });
+
+  final Widget title;
+  final Widget content;
+  final List<Widget>? actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.kolo;
+    return AlertDialog(
+      backgroundColor: palette.surface,
+      surfaceTintColor: Colors.transparent,
+      title: title,
+      content: content,
+      actions: actions,
+    );
+  }
 }

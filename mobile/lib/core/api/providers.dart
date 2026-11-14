@@ -14,4 +14,20 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 });
 
 /// Set by the app shell so an unrecoverable 401 can send the member to sign-in.
-final sessionExpiredProvider = StateProvider<bool>((ref) => false);
+///
+/// A [Notifier] rather than a `StateProvider`: `StateProvider` was deprecated in
+/// Riverpod 2 and dropped from Riverpod 3's default exports, while `Notifier`
+/// has been the supported shape since 2.0. Same behaviour, one type, both
+/// versions.
+class SessionExpired extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void signal() => state = true;
+
+  /// Called once the member has been sent to sign-in, so the next launch does
+  /// not redirect again.
+  void clear() => state = false;
+}
+
+final sessionExpiredProvider = NotifierProvider<SessionExpired, bool>(SessionExpired.new);

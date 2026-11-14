@@ -40,7 +40,7 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
   @override
   void initState() {
     super.initState();
-    _currency = ref.read(programmeProvider(widget.programmeId)).valueOrNull?.currency ?? 'NGN';
+    _currency = ref.read(programmeProvider(widget.programmeId)).value?.currency ?? 'NGN';
     final suggested = widget.suggestedMinor;
     _amount = TextEditingController(
       text: suggested == null ? '' : (suggested / 100).toStringAsFixed(2),
@@ -96,7 +96,7 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
       if (status == 'succeeded') {
         await showDialog<void>(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (context) => KoloDialog(
             title: const Text('Contribution confirmed'),
             content: Text(
               'Your payment was confirmed by the provider. Reference ${started.reference}.',
@@ -126,7 +126,7 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final programme = ref.watch(programmeProvider(widget.programmeId)).valueOrNull;
+    final programme = ref.watch(programmeProvider(widget.programmeId)).value;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Contribute')),

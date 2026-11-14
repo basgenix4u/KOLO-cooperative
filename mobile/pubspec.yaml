@@ -4,6 +4,9 @@ publish_to: "none"
 version: 0.1.0+1
 
 environment:
+  # Wide enough for both ends of what this app is tested against: Dart 3.5 /
+  # Flutter 3.24 (the pinned lockfile) and Dart 3.14 / Flutter 3.50. Pinning a
+  # narrow range here is what let the two drift apart.
   sdk: ">=3.4.0 <4.0.0"
   flutter: ">=3.22.0"
 
@@ -12,12 +15,21 @@ dependencies:
     sdk: flutter
 
   # State and routing: deliberately small. This app has one job per screen.
-  flutter_riverpod: ^2.5.1
+  # The code in this repo is written against the Riverpod API that exists in
+  # both 2.x and 3.x — `Notifier`/`NotifierProvider`, `AsyncValue.value`, no
+  # `StateProvider`. Keeping the constraint at 2.x resolves 2.6.1 here, but a
+  # machine with Riverpod 3 already in its cache resolves 3.4.3, and both are
+  # expected to build. Do not narrow this without re-reading
+  # lib/core/theme/theme_mode.dart and lib/core/api/providers.dart.
+  flutter_riverpod: ">=2.5.1 <4.0.0"
   go_router: ^14.2.7
 
   # HTTP, storage and secure token handling.
   dio: ^5.7.0
-  flutter_secure_storage: ^9.2.2
+  # 10.x dropped `AndroidOptions(encryptedSharedPreferences:)`, so the client no
+  # longer passes it; that keeps 9.x and 10.x both valid. The lower bound stays
+  # at 9 because KeychainAccessibility and the plugin's core API are unchanged.
+  flutter_secure_storage: ">=9.2.2 <11.0.0"
   shared_preferences: ^2.3.2
 
   # Intl for money formatting; every amount is integer minor units.

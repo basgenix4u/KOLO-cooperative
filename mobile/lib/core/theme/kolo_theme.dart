@@ -293,15 +293,13 @@ class KoloTheme {
           letterSpacing: -0.2,
         ),
       ),
-      cardTheme: CardTheme(
-        color: palette.surface,
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: palette.divider),
-        ),
-      ),
+      // No `cardTheme` here on purpose. Flutter renamed `CardTheme` to
+      // `CardThemeData` in 3.27 and changed the `ThemeData.cardTheme` parameter
+      // type with it, so any literal in this slot fails to compile on one side
+      // or the other. Nothing in the app uses a raw `Card` — every panel is a
+      // `KoloCard`, which reads its colours from the palette directly — so the
+      // slot was doing nothing anyway. Setting it per-widget is both portable
+      // and honest about what is actually styled.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: palette.accent,
@@ -367,10 +365,9 @@ class KoloTheme {
         surfaceTintColor: Colors.transparent,
         dragHandleColor: palette.divider,
       ),
-      dialogTheme: DialogTheme(
-        backgroundColor: palette.surface,
-        surfaceTintColor: Colors.transparent,
-      ),
+      // `dialogTheme` has the same CardTheme/DialogTheme split as above. Alert
+      // dialogs are painted through `KoloDialogs`, which applies the surface
+      // colour per dialog rather than through this slot.
     );
   }
 

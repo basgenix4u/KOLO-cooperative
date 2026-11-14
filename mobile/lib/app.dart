@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/deeplink/deep_links.dart';
+import 'core/models/models.dart';
 import 'core/theme/kolo_theme.dart';
 import 'core/theme/theme_mode.dart';
 import 'features/auth/auth_controller.dart';
@@ -76,7 +77,7 @@ class _KoloAppState extends ConsumerState<KoloApp> {
     _router.go(link.requiresSession ? '/welcome' : link.path);
   }
 
-  bool get _hasSession => ref.read(sessionProvider).valueOrNull != null;
+  bool get _hasSession => ref.read(sessionProvider).value != null;
 
   @override
   void dispose() {
@@ -97,7 +98,7 @@ class _KoloAppState extends ConsumerState<KoloApp> {
             path.startsWith('/register') ||
             path.startsWith('/verify');
 
-        final user = session.valueOrNull;
+        final user = session.value;
         final signedIn = user != null;
 
         if (session.isLoading && !session.hasValue) return null;
@@ -182,12 +183,12 @@ class _KoloAppState extends ConsumerState<KoloApp> {
     ref.listen(sessionProvider, (previous, next) {
       // A link that arrived while signed out is finally actionable.
       final pending = _pending;
-      if (pending != null && next.hasValue && next.valueOrNull != null) {
+      if (pending != null && next.hasValue && next.value != null) {
         _pending = null;
         WidgetsBinding.instance.addPostFrameCallback((_) => _router.go(pending.path));
         return;
       }
-      if (next.hasValue && next.valueOrNull == null) {
+      if (next.hasValue && next.value == null) {
         final location = _router.routerDelegate.currentConfiguration.uri.path;
         if (!location.startsWith('/welcome') && !location.startsWith('/login')) {
           _router.go('/welcome');
@@ -213,13 +214,24 @@ class _KoloAppState extends ConsumerState<KoloApp> {
 /// A StatefulWidget's `ref` is a `WidgetRef`, which cannot outlive the widget, so
 /// the notifier keeps the subscription and disposes it with itself.
 class _ProviderNotifier extends ChangeNotifier {
-  _ProviderNotifier(WidgetRef ref, ProviderListenable<AsyncValue<dynamic>> provider) {
+  /// The provider is named concretely rather than through `ProviderListenable`.
+  ///
+  /// Two reasons, both from Riverpod 3: `ProviderListenable` is no longer
+  /// exported from the default entrypoint, and `ProviderSubscription` is now
+  /// parameterised by the provider's own state type, so the old
+  /// `ProviderSubscription<AsyncValue<dynamic>>` no longer matched a
+  /// subscription to `AsyncValue<UserProfile?>`. `FutureProvider` is exported by
+  /// both 2.x and 3.x, so naming it needs no compatibility shim.
+  _ProviderNotifier(WidgetRef ref, FutureProvider<UserProfile?> provider) {
     // `listen` on a WidgetRef returns void; `listenManual` gives us a
     // subscription we own and can cancel when the router is rebuilt.
-    _subscription = ref.listenManual<AsyncValue<dynamic>>(provider, (_, __) => notifyListeners());
+    _subscription = ref.listenManual<AsyncValue<UserProfile?>>(
+      provider,
+      (_, __) => notifyListeners(),
+    );
   }
 
-  ProviderSubscription<AsyncValue<dynamic>>? _subscription;
+  ProviderSubscription<AsyncValue<UserProfile?>>? _subscription;
 
   @override
   void dispose() {

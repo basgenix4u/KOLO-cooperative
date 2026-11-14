@@ -71,7 +71,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
   Future<void> _vote(bool inFavour) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => KoloDialog(
         title: Text(inFavour ? 'Vote in favour?' : 'Vote against?'),
         content: const Text(
           'Your vote counts as soon as you confirm and cannot be changed. '

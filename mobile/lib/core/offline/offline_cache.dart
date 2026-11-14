@@ -174,7 +174,7 @@ final offlineCacheProvider = FutureProvider<OfflineCache>((ref) async {
 /// which disables the cache rather than mixing two people's data on a shared
 /// handset — the ordinary case in the market this is built for.
 final cacheUserIdProvider = Provider<String>((ref) {
-  final session = ref.watch(sessionProvider).valueOrNull;
+  final session = ref.watch(sessionProvider).value;
   return session?.id ?? '';
 });
 

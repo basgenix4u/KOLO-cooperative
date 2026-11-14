@@ -8,12 +8,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// their balance at night should get the dark screen their phone is already
 /// showing everywhere else. An explicit choice always wins over the system
 /// setting and is remembered across launches.
-class ThemeModeController extends StateNotifier<ThemeMode> {
-  ThemeModeController() : super(ThemeMode.system) {
-    _load();
-  }
-
+///
+/// This is a [Notifier] rather than a `StateNotifier`. `StateNotifier` was
+/// deprecated in Riverpod 2 and removed from the default Riverpod 3 surface
+/// (still reachable through `package:flutter_riverpod/legacy.dart`, but there is
+/// no reason to reach for a deprecated type in new code). `Notifier` is the
+/// supported shape in both 2.x and 3.x, which is why this file compiles on
+/// either without a conditional import.
+class ThemeModeController extends Notifier<ThemeMode> {
   static const _key = 'kolo.theme_mode';
+
+  @override
+  ThemeMode build() {
+    // Loading is deliberately fire-and-forget: the first frame uses the system
+    // theme, and the stored preference is applied as soon as it is read. A
+    // preference that cannot be read is never worth blocking a launch over.
+    _load();
+    return ThemeMode.system;
+  }
 
   Future<void> _load() async {
     try {
@@ -21,7 +33,7 @@ class ThemeModeController extends StateNotifier<ThemeMode> {
       final stored = prefs.getString(_key);
       if (stored != null) state = _fromName(stored);
     } catch (_) {
-      // A preference that cannot be read is not worth failing a launch over.
+      // Keep the system default.
     }
   }
 
@@ -42,8 +54,9 @@ class ThemeModeController extends StateNotifier<ThemeMode> {
       };
 }
 
-final themeModeProvider =
-    StateNotifierProvider<ThemeModeController, ThemeMode>((ref) => ThemeModeController());
+final themeModeProvider = NotifierProvider<ThemeModeController, ThemeMode>(
+  ThemeModeController.new,
+);
 
 /// A three-way choice, because "follow my phone" is a real preference and a
 /// two-state switch silently overrides it.

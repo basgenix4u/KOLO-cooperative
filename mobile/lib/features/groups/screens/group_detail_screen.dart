@@ -19,7 +19,7 @@ class GroupDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(group.valueOrNull?.name ?? 'Group'),
+        title: Text(group.value?.name ?? 'Group'),
         actions: [
           IconButton(
             tooltip: 'Group chat',
@@ -54,7 +54,7 @@ class GroupDetailScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Programmes', style: Theme.of(context).textTheme.titleLarge),
-                if (group.valueOrNull?.iAmOfficer == true)
+                if (group.value?.iAmOfficer == true)
                   TextButton.icon(
                     onPressed: () => _showProgrammeInfo(context),
                     icon: const Icon(Icons.info_outline, size: 18),

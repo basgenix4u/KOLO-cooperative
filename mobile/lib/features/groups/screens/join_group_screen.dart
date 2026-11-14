@@ -64,7 +64,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       final slug = data['slug'];
       await showDialog<void>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
+        builder: (dialogContext) => KoloDialog(
           title: const Text('You are in'),
           content: Text('Welcome to ${data['name'] ?? 'the group'}.'),
           actions: [
@@ -125,7 +125,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       if (!mounted) return;
       await showDialog<void>(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (context) => KoloDialog(
           title: const Text('Request sent'),
           content: Text(
             group.requiresApproval

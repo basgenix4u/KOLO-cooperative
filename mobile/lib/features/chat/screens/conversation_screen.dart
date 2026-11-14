@@ -109,7 +109,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = context.kolo;
-    final myId = ref.watch(sessionProvider).valueOrNull?.id ?? '';
+    final myId = ref.watch(sessionProvider).value?.id ?? '';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Group chat')),

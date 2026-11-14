@@ -24,8 +24,23 @@ class _EmptyTokenStore extends TokenStore {
 
 /// A controller pinned to one mode, so a test never depends on what is stored on
 /// the device or on the host platform's brightness.
+///
+/// Overrides the provider with `overrideWith` rather than replacing a state
+/// value, because a Riverpod 3 `Notifier` is built through its factory and only
+/// then has its state set. Doing it in `build()` keeps this valid on both
+/// Riverpod 2 and 3.
 class _ForcedMode extends ThemeModeController {
-  _ForcedMode(ThemeMode mode) {
+  _ForcedMode(this._mode);
+
+  final ThemeMode _mode;
+
+  @override
+  ThemeMode build() => _mode;
+
+  // Never touch shared preferences from a test: the stored value would leak
+  // between tests and, on a real device, pin the theme for the next launch.
+  @override
+  Future<void> set(ThemeMode mode) async {
     state = mode;
   }
 }
@@ -135,7 +150,7 @@ void main() {
             sessionProvider.overrideWith((ref) async => null),
             myGroupsProvider.overrideWith((ref) async => const []),
             myObligationsProvider.overrideWith((ref) async => const []),
-            themeModeProvider.overrideWith((ref) => _ForcedMode(ThemeMode.dark)),
+            themeModeProvider.overrideWith(() => _ForcedMode(ThemeMode.dark)),
           ],
           child: const KoloApp(),
         ),
@@ -162,7 +177,7 @@ void main() {
             sessionProvider.overrideWith((ref) async => null),
             myGroupsProvider.overrideWith((ref) async => const []),
             myObligationsProvider.overrideWith((ref) async => const []),
-            themeModeProvider.overrideWith((ref) => _ForcedMode(ThemeMode.light)),
+            themeModeProvider.overrideWith(() => _ForcedMode(ThemeMode.light)),
           ],
           child: const KoloApp(),
         ),

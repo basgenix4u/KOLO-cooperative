@@ -20,10 +20,10 @@ class HomeScreen extends ConsumerWidget {
     // Whether what is on screen came from the network or from the last saved
     // copy. The member is told either way; a silent fallback would let a stale
     // list look like a live one.
-    final groupsFresh = ref.watch(myGroupsFreshProvider).valueOrNull;
+    final groupsFresh = ref.watch(myGroupsFreshProvider).value;
     final obligations = ref.watch(myObligationsProvider);
 
-    final name = session.valueOrNull?.displayName ?? 'there';
+    final name = session.value?.displayName ?? 'there';
 
     return Scaffold(
       body: SafeArea(

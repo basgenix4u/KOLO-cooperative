@@ -156,7 +156,7 @@ class PayoutsScreen extends ConsumerWidget {
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => KoloDialog(
         title: Text(approve ? 'Approve this payout?' : 'Decline this payout?'),
         content: Text(
           approve

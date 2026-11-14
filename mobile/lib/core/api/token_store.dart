@@ -9,7 +9,13 @@ class TokenStore {
   TokenStore({FlutterSecureStorage? storage})
       : _storage = storage ??
             const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
+              // `encryptedSharedPreferences` was removed in flutter_secure_storage
+              // 10: Google deprecated the Jetpack Security library behind it, and
+              // the plugin now uses AES-GCM with RSA-OAEP key wrapping by default
+              // — stronger than what the flag used to switch on. Passing the old
+              // flag is a compile error on 10.x, and leaving it off is correct
+              // rather than a downgrade.
+              aOptions: AndroidOptions(),
               iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
             );
 

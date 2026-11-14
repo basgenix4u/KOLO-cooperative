@@ -23,21 +23,21 @@ class ProgrammeDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(programme.valueOrNull?.name ?? 'Programme'),
+        title: Text(programme.value?.name ?? 'Programme'),
         actions: [
           // Money out gets its own screen: a payout needs an account number and
           // a second officer, which does not belong in a header button.
           IconButton(
             tooltip: 'Payouts',
             icon: const Icon(Icons.account_balance_outlined),
-            onPressed: programme.valueOrNull == null
+            onPressed: programme.value == null
                 ? null
                 : () => context.push(
                       '/programmes/$programmeId/payouts',
                       extra: {
-                        'name': programme.valueOrNull!.name,
-                        'currency': programme.valueOrNull!.currency,
-                        'slug': programme.valueOrNull!.groupSlug,
+                        'name': programme.value!.name,
+                        'currency': programme.value!.currency,
+                        'slug': programme.value!.groupSlug,
                       },
                     ),
           ),
@@ -208,7 +208,7 @@ class _CycleCardState extends ConsumerState<_CycleCard> {
       // A refusal here is the system working: show the server's own words.
       await showDialog<void>(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (context) => KoloDialog(
           title: Text(error.isFinancialRefusal ? 'Not yet' : 'Could not complete'),
           content: Text(error.userMessage),
           actions: [

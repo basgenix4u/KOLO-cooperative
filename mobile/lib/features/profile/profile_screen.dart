@@ -16,7 +16,7 @@ class ProfileScreen extends ConsumerWidget {
     final palette = context.kolo;
     final session = ref.watch(sessionProvider);
     final contributions = ref.watch(myContributionsProvider);
-    final user = session.valueOrNull;
+    final user = session.value;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
