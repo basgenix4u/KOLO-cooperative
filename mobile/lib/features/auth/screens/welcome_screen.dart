@@ -160,7 +160,7 @@ class WelcomeScreen extends ConsumerWidget {
                             color: Colors.white.withValues(alpha: 0.55),
                           ),
                           label: Text(
-                            themeModeLabel(themeMode),
+                            themeModeNextLabel(themeMode),
                             style: TextStyle(
                               fontFamily: KoloType.family,
                               fontSize: 12,

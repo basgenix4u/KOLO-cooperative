@@ -65,3 +65,14 @@ String themeModeLabel(ThemeMode mode) => switch (mode) {
       ThemeMode.light => 'Always light',
       ThemeMode.dark => 'Always dark',
     };
+
+/// What tapping the appearance control will do next.
+///
+/// Distinct from [themeModeLabel], which describes the mode that is currently
+/// on. On a button, "Always light" reads as a toggle already switched on; the
+/// button should say where it takes you.
+String themeModeNextLabel(ThemeMode current) => switch (current) {
+      ThemeMode.system => 'Match my phone',
+      ThemeMode.light => 'Switch to dark',
+      ThemeMode.dark => 'Switch to light',
+    };
