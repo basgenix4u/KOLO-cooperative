@@ -113,6 +113,10 @@ class KoloAmount extends StatelessWidget {
       label: semanticLabel ??
           '${money.format(withSymbol: false)} ${money.currency}',
       excludeSemantics: true,
+      // `scaleDown`, never up. A balance is set at a commanding size and only
+      // shrinks when the digits genuinely will not fit (a nine-figure balance on
+      // a 320dp phone). Scaling up turns a small number into an absurd one and
+      // destroys the typographic hierarchy the hero figure depends on.
       child: FittedBox(
         fit: BoxFit.scaleDown,
         alignment: Alignment.centerLeft,
@@ -122,7 +126,7 @@ class KoloAmount extends StatelessWidget {
           children: [
             if (showCurrency)
               Padding(
-                padding: EdgeInsets.only(top: size * 0.10, right: 3),
+                padding: EdgeInsets.only(top: size * 0.16, right: 3),
                 child: Text(symbol, style: KoloType.currencyMark(c, size: size, color: tone.withValues(alpha: 0.55))),
               ),
             Text(whole, style: KoloType.money(c, size: size, weight: weight, color: tone)),
@@ -130,8 +134,8 @@ class KoloAmount extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.only(top: size * 0.10, left: 2),
                 child: Text(
-                  '.${money.minor.abs() % 100 == 0 ? '00' : (money.minor.abs() % 100).toString().padLeft(2, '0')}',
-                  style: KoloType.money(c, size: size * 0.55, weight: FontWeight.w600, color: tone.withValues(alpha: 0.5)),
+                  '.${(money.minor.abs() % 100).toString().padLeft(2, '0')}',
+                  style: KoloType.money(c, size: size * 0.42, weight: FontWeight.w600, color: tone.withValues(alpha: 0.5)),
                 ),
               ),
           ],

@@ -385,11 +385,16 @@ class _PositionCard extends StatelessWidget {
             ),
             const SizedBox(height: KoloSpace.md),
             if (hasData)
-              KoloAmount(
-                money: shown,
-                size: 38,
-                color: Colors.white,
-                weight: FontWeight.w700,
+              // Tight width so the hero figure fills the card at any magnitude
+              // rather than floating small in the middle of it.
+              SizedBox(
+                width: double.infinity,
+                child: KoloAmount(
+                  money: shown,
+                  size: 50,
+                  color: Colors.white,
+                  weight: FontWeight.w700,
+                ),
               )
             else
               const KoloSkeleton(width: 180, height: 34, radius: 8),
@@ -496,10 +501,15 @@ class _ObligationCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(
         KoloSpace.page, KoloSpace.lg, KoloSpace.page, 0),
       child: KoloCard(
-        color: urgent ? c.failedWash : c.accentWash,
+        // Daylight: a citrus field, because it is the only thing on screen
+        // asking for action. Night: a raised surface with a citrus edge, since a
+        // full citrus field at night is a glare.
+        color: urgent
+            ? c.failedWash
+            : (c.isDark ? c.surfaceRaised : c.accentWash),
         border: urgent
             ? c.failed.withValues(alpha: 0.28)
-            : c.accent.withValues(alpha: 0.55),
+            : c.accent.withValues(alpha: c.isDark ? 0.42 : 0.55),
         padding: const EdgeInsets.all(KoloSpace.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,10 +578,11 @@ class _ObligationCard extends StatelessWidget {
                 onPressed: rows.length > 1
                     ? () => context.push('/contributions')
                     : () => context.push('/programmes/${effective.programmeId}/contribute'),
+                // A truncated amount on the action is worse than a two-line
+                // label: wrap rather than ellipsise.
                 child: Text(
                   rows.length > 1 ? 'Pay $totalDue' : 'Contribute ${effective.outstanding.format()}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
@@ -630,68 +641,42 @@ class _GroupCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          isRestricted ? Icons.lock_outline_rounded : Icons.public_rounded,
+                          isRestricted
+                              ? Icons.lock_outline_rounded
+                              : Icons.public_rounded,
                           size: 11,
                           color: c.textFaint,
                         ),
-                        const SizedBox(width: 4),
-                        Flexible(
+                        const SizedBox(width: KoloSpace.xs + 1),
+                        // One string, one ellipsis. Three competing Flexible
+                        // widgets each truncated their own word, which produced
+                        // "Restric… · Collea…".
+                        Expanded(
                           child: Text(
-                            _capitalise(group.visibility),
+                            [
+                              _capitalise(group.visibility),
+                              if (group.category.isNotEmpty) _capitalise(group.category),
+                              '${group.memberCount} ${group.memberCount == 1 ? 'member' : 'members'}',
+                            ].join(' · '),
                             style: context.text.bodySmall,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (group.category.isNotEmpty) ...[
-                          Text(' · ', style: context.text.bodySmall),
-                          Flexible(
-                            child: Text(
-                              _capitalise(group.category),
-                              style: context.text.bodySmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: KoloSpace.md),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  KoloStatusPill(status: 'active', label: _capitalise(group.myRole), compact: true),
-                  const SizedBox(height: 5),
-                  Text(
-                    '${group.memberCount} ${group.memberCount == 1 ? 'member' : 'members'}',
-                    style: context.text.bodySmall,
-                  ),
-                ],
+              const SizedBox(width: KoloSpace.sm),
+              KoloStatusPill(
+                status: 'active',
+                label: _capitalise(group.myRole),
+                compact: true,
               ),
+              const SizedBox(width: KoloSpace.xs),
+              Icon(Icons.chevron_right_rounded, size: 18, color: c.textFaint),
             ],
-          ),
-          const SizedBox(height: KoloSpace.md),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: KoloSpace.md, vertical: KoloSpace.sm + 2),
-            decoration: BoxDecoration(
-              color: c.surfaceSunken,
-              borderRadius: BorderRadius.circular(KoloRadius.sm),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  'Open group',
-                  style: context.text.bodySmall?.copyWith(
-                    color: c.text, fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                Icon(Icons.arrow_forward_rounded, size: 14, color: c.textSoft),
-              ],
-            ),
           ),
         ],
       ),

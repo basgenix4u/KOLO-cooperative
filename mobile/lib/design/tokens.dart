@@ -182,7 +182,7 @@ class KoloColors extends ThemeExtension<KoloColors> {
     // Brand citrus already holds 13:1 on Midnight Ink, so in dark mode the text
     // tone can be the full-strength brand colour.
     accentText: KoloBrand.citrus,
-    accentWash: Color(0x2ED5F45A),
+    accentWash: Color(0x1AD5F45A),
     navBackground: Color(0xFF0C1219),
     navActive: KoloBrand.citrus,
     navInactive: Color(0xFF5C6A75),

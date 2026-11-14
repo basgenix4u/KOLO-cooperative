@@ -20,7 +20,7 @@ class KoloMark extends StatelessWidget {
     this.semanticLabel = 'KOLO',
   });
 
-  /// Height in logical pixels. Width follows the mark's own 34:30 ratio.
+  /// Height in logical pixels. Width follows the mark's own 516:451 ratio.
   final double size;
   final Color? color;
   final String semanticLabel;
@@ -32,7 +32,7 @@ class KoloMark extends StatelessWidget {
       label: semanticLabel,
       child: SizedBox(
         height: size,
-        width: size * (34 / 30),
+        width: size * (516 / 451),
         child: CustomPaint(painter: _KoloMarkPainter(resolved)),
       ),
     );
@@ -46,26 +46,17 @@ class _KoloMarkPainter extends CustomPainter {
 
   /// Normalised silhouette (0..1 on both axes), read from the traced artwork.
   static const List<Offset> _outline = [
-    Offset(0.0205, 0.3668),
-    Offset(0.0013, 0.5379),
-    Offset(0.0334, 0.6455),
-    Offset(0.0988, 0.7055),
-    Offset(0.2426, 0.7513),
-    Offset(0.4493, 0.9577),
-    Offset(0.5481, 0.9912),
-    Offset(0.7548, 0.9982),
-    Offset(0.8858, 0.9683),
-    Offset(0.9474, 0.8995),
-    Offset(0.9461, 0.7354),
-    Offset(0.9974, 0.5132),
-    Offset(0.9846, 0.3668),
-    Offset(0.9101, 0.2116),
-    Offset(0.7561, 0.0388),
-    Offset(0.5918, 0.0000),
-    Offset(0.3107, 0.0282),
-    Offset(0.2439, 0.0741),
-    Offset(0.1656, 0.2187),
-    Offset(0.0578, 0.3016),
+    Offset(0.0078, 0.0089),
+    Offset(0.0078, 0.3171),
+    Offset(0.6880, 0.3215),
+    Offset(0.6860, 0.6452),
+    Offset(0.0097, 0.6452),
+    Offset(0.3140, 0.9823),
+    Offset(0.9845, 0.9889),
+    Offset(0.6860, 0.6452),
+    Offset(0.9903, 0.6408),
+    Offset(0.9903, 0.3348),
+    Offset(0.7054, 0.0111),
   ];
 
   @override
