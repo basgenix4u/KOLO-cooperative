@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/providers.dart';
-import '../../../core/theme/kolo_theme.dart';
-import '../../../shared/widgets/common.dart';
+import '../../../design/components.dart';
+import '../../../design/navigation.dart';
+import '../../../design/tokens.dart';
+import '../../../design/typography.dart';
 import '../../savings/savings_providers.dart';
 
 class CreateGroupScreen extends ConsumerStatefulWidget {
@@ -67,44 +69,67 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
+    final palette = context.colors;
     return Scaffold(
-      appBar: AppBar(title: const Text('New group')),
+      backgroundColor: palette.ground,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          padding: const EdgeInsets.fromLTRB(
+              KoloSpace.page, KoloSpace.sm, KoloSpace.page, KoloSpace.hero),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    KoloBackButton(onTap: () => Navigator.of(context).maybePop()),
+                    const Spacer(),
+                  ],
+                ),
+                const SizedBox(height: KoloSpace.md),
+                KoloPageHeader(
+                  eyebrow: 'You will be the owner',
+                  title: 'Start a group',
+                ),
+                const SizedBox(height: KoloSpace.xl),
                 if (_error != null) ...[
-                  ErrorNotice(error: ApiException(code: 'group', message: _error!)),
-                  const SizedBox(height: 16),
+                  KoloNotice(
+                    message: _error!,
+                    tone: KoloNoticeTone.critical,
+                    icon: Icons.error_outline_rounded,
+                  ),
+                  const SizedBox(height: KoloSpace.lg),
                 ],
+                Text('NAME', style: KoloType.eyebrow(palette)),
+                const SizedBox(height: KoloSpace.sm),
                 TextFormField(
                   controller: _name,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Group name',
-                    hintText: 'e.g. Abuja Friends Ajo',
+                  style: TextStyle(
+                    fontFamily: KoloType.family, fontSize: 16,
+                    fontWeight: FontWeight.w500, color: palette.text,
                   ),
+                  decoration: const InputDecoration(hintText: 'e.g. Abuja Friends Ajo'),
                   validator: (value) =>
                       (value == null || value.trim().length < 3) ? 'Give the group a name' : null,
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: KoloSpace.lg),
+                Text('WHAT IS IT FOR', style: KoloType.eyebrow(palette)),
+                const SizedBox(height: KoloSpace.sm),
                 TextFormField(
                   controller: _description,
                   maxLines: 3,
+                  style: TextStyle(
+                    fontFamily: KoloType.family, fontSize: 15, color: palette.text,
+                  ),
                   decoration: const InputDecoration(
-                    labelText: 'What is this group for?',
                     hintText: 'Optional — helps members recognise it',
-                    alignLabelWithHint: true,
                   ),
                 ),
-                const SizedBox(height: 22),
-                Text('Who can find this group?', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 10),
+                const SizedBox(height: KoloSpace.section),
+                Text('Who can find this group?', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: KoloSpace.md),
                 _ChoiceTile(
                   selected: _visibility == 'private',
                   title: 'Invite only',
@@ -128,11 +153,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                   icon: Icons.public,
                   onTap: () => setState(() => _visibility = 'public'),
                 ),
-                const SizedBox(height: 22),
-                Text('Currency', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 10),
+                const SizedBox(height: KoloSpace.section),
+                Text('Currency', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: KoloSpace.md),
                 Wrap(
-                  spacing: 8,
+                  spacing: KoloSpace.sm,
+                  runSpacing: KoloSpace.sm,
                   children: [
                     for (final code in ['NGN', 'USD', 'GBP', 'KES', 'GHS', 'ZAR'])
                       ChoiceChip(
@@ -142,48 +168,38 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 22),
-                SwitchListTile.adaptive(
-                  value: _requiresApproval,
-                  onChanged: (value) => setState(() => _requiresApproval = value),
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Approve new members'),
-                  subtitle: const Text('Recommended: a savings group is only as safe as its members.'),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: palette.moneySoft,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.shield_outlined, size: 18, color: palette.warning),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'You will be the owner. Withdrawals will need a second officer to '
-                          'approve them, and you cannot approve a payout to yourself.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: palette.text,
-                              ),
-                        ),
+                const SizedBox(height: KoloSpace.section),
+                KoloCard(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: KoloSpace.lg, vertical: KoloSpace.xs),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: SwitchListTile.adaptive(
+                      value: _requiresApproval,
+                      onChanged: (value) => setState(() => _requiresApproval = value),
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('Approve new members',
+                          style: Theme.of(context).textTheme.titleSmall),
+                      subtitle: Text(
+                        'A savings group is only as safe as its members.',
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
-                    ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _busy ? null : _submit,
-                  child: _busy
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Create group'),
+                const SizedBox(height: KoloSpace.lg),
+                KoloNotice(
+                  message: 'Withdrawals will need a second officer to approve them, and '
+                      'you cannot approve a payout to yourself — not even as the owner.',
+                  tone: KoloNoticeTone.warning,
+                  icon: Icons.shield_outlined,
+                ),
+                const SizedBox(height: KoloSpace.xl),
+                KoloSubmitButton(
+                  label: 'Create group',
+                  busyLabel: 'Creating…',
+                  busy: _busy,
+                  onPressed: _submit,
                 ),
               ],
             ),
@@ -211,43 +227,56 @@ class _ChoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: palette.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? palette.accent : palette.divider,
-            width: selected ? 1.6 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: selected ? palette.accent : palette.textFaint),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? palette.accent : palette.text,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ),
+    final c = context.colors;
+    return Semantics(
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(KoloRadius.md),
+        child: AnimatedContainer(
+          duration: KoloMotion.fast,
+          padding: const EdgeInsets.all(KoloSpace.lg),
+          decoration: BoxDecoration(
+            // The selected option takes a citrus tint and a citrus edge; the
+            // unselected ones stay quiet. Citrus is for selection, not for
+            // every surface that happens to be tappable.
+            color: selected ? c.accentWash : c.surface,
+            borderRadius: BorderRadius.circular(KoloRadius.md),
+            border: Border.all(
+              color: selected ? c.accent : c.hairline,
+              width: selected ? 1.6 : 1,
             ),
-            if (selected)
-              Icon(Icons.check_circle, size: 20, color: palette.accent),
-          ],
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 19, color: selected ? c.accentText : c.textSoft),
+              const SizedBox(width: KoloSpace.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: context.text.titleSmall?.copyWith(
+                        color: c.text, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(subtitle, style: context.text.bodySmall),
+                  ],
+                ),
+              ),
+              const SizedBox(width: KoloSpace.sm),
+              // Selection is a filled circle, not only a colour: the tick is the
+              // signal, the colour reinforces it.
+              Icon(
+                selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                size: 20,
+                color: selected ? c.accentText : c.textFaint,
+              ),
+            ],
+          ),
         ),
       ),
     );
