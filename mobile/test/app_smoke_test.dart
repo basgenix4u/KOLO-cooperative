@@ -41,8 +41,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Money you pool together'), findsOneWidget);
-    expect(find.text('Create an account'), findsOneWidget);
+    expect(find.textContaining('Saved together'), findsOneWidget);
+    expect(find.text('Create your account'), findsOneWidget);
     expect(find.text('I already have an account'), findsOneWidget);
   });
 

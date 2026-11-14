@@ -6,15 +6,18 @@ import 'package:go_router/go_router.dart';
 
 import 'core/deeplink/deep_links.dart';
 import 'core/models/models.dart';
-import 'core/theme/kolo_theme.dart';
 import 'core/theme/theme_mode.dart';
+import 'design/shell.dart';
+import 'design/theme.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/verify_screen.dart';
+import 'features/auth/screens/welcome_screen.dart';
 import 'features/chat/screens/conversation_screen.dart';
 import 'features/groups/screens/create_group_screen.dart';
 import 'features/groups/screens/group_detail_screen.dart';
+import 'features/groups/screens/groups_tab.dart';
 import 'features/groups/screens/home_screen.dart';
 import 'features/groups/screens/join_group_screen.dart';
 import 'features/notifications/notifications_screen.dart';
@@ -115,7 +118,27 @@ class _KoloAppState extends ConsumerState<KoloApp> {
           path: '/verify',
           builder: (_, state) => VerifyScreen(email: state.uri.queryParameters['email'] ?? ''),
         ),
-        GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
+        // The signed-in frame. Each destination is a branch with its own
+        // navigator, so switching tabs preserves scroll position and back
+        // gestures behave the way people expect.
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) =>
+              KoloShell(navigationShell: navigationShell),
+          branches: [
+            StatefulShellBranch(
+              routes: [GoRoute(path: '/', builder: (_, __) => const HomeScreen())],
+            ),
+            StatefulShellBranch(
+              routes: [GoRoute(path: '/groups', builder: (_, __) => const GroupsTab())],
+            ),
+            StatefulShellBranch(
+              routes: [GoRoute(path: '/money', builder: (_, __) => const ContributionsScreen())],
+            ),
+            StatefulShellBranch(
+              routes: [GoRoute(path: '/account', builder: (_, __) => const ProfileScreen())],
+            ),
+          ],
+        ),
         GoRoute(
           path: '/groups/new',
           builder: (_, __) => const CreateGroupScreen(),
@@ -240,70 +263,3 @@ class _ProviderNotifier extends ChangeNotifier {
   }
 }
 
-class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.kolo;
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Spacer(),
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: palette.accent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Center(
-                  child: Text(
-                    'K',
-                    style: TextStyle(
-                      color: palette.surface,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 28),
-              Text(
-                'Money you pool together,\naccounted for properly.',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(height: 1.2),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Ajo, esusu, adashe — the groups you already trust, with every contribution '
-                'recorded and every payout backed by money that has actually been collected.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: palette.textSoft),
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: () => context.push('/register'),
-                child: const Text('Create an account'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => context.push('/login'),
-                child: const Text('I already have an account'),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  'Sandbox build — no real money moves',
-                  style: TextStyle(fontSize: 12, color: palette.textFaint),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
