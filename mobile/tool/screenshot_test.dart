@@ -10,6 +10,7 @@ import 'package:kolo/core/api/token_store.dart';
 import 'package:kolo/core/models/models.dart';
 import 'package:kolo/core/offline/offline_cache.dart';
 import 'package:kolo/core/models/money.dart';
+import 'package:kolo/core/models/withdrawal.dart';
 import 'package:kolo/features/auth/auth_controller.dart';
 import 'package:kolo/features/savings/savings_providers.dart';
 import 'package:kolo/core/theme/theme_mode.dart';
@@ -210,6 +211,53 @@ final _moneyHistory = [
   ),
 ];
 
+final _withdrawals = <Withdrawal>[
+  Withdrawal(
+    id: 'wd_1',
+    programmeId: 'prg_1',
+    amount: const Money(5000000, 'NGN'),
+    reason: 'rotation_payout',
+    status: 'pending_approval',
+    note: 'Cycle 4 — Abdulbasit Abdulalim',
+    requestedByName: 'Fatima Bello',
+    approvalsCount: 0,
+    createdAt: DateTime.now().subtract(const Duration(hours: 6)),
+  ),
+  Withdrawal(
+    id: 'wd_2',
+    programmeId: 'prg_1',
+    amount: const Money(2500000, 'NGN'),
+    reason: 'emergency',
+    status: 'approved',
+    note: 'Hospital bill for a member',
+    requestedByName: 'Fatima Bello',
+    approvalsCount: 1,
+    createdAt: DateTime.now().subtract(const Duration(days: 2)),
+  ),
+  Withdrawal(
+    id: 'wd_3',
+    programmeId: 'prg_1',
+    amount: const Money(7500000, 'NGN'),
+    reason: 'rotation_payout',
+    status: 'paid',
+    note: 'Cycle 3',
+    requestedByName: 'Ibrahim Musa',
+    approvalsCount: 1,
+    createdAt: DateTime.now().subtract(const Duration(days: 33)),
+    executedAt: DateTime.now().subtract(const Duration(days: 32)),
+  ),
+];
+
+final _groupSummary = <String, dynamic>{
+  'programmes': [
+    {
+      'id': 'prg_1',
+      'available_minor': 17500000,
+      'collected_minor': 17500000,
+    },
+  ],
+};
+
 Widget _app({required ThemeMode mode, required bool signedIn}) {
   return ProviderScope(
     overrides: [
@@ -228,6 +276,8 @@ Widget _app({required ThemeMode mode, required bool signedIn}) {
       // The contribute route stacks on top of programme detail, which fetches
       // cycles on build. Without this it opens a real socket and leaves a timer.
       programmeCyclesProvider('prg_1').overrideWith((ref) async => <RotationCycle>[]),
+      programmeWithdrawalsProvider('prg_1').overrideWith((ref) async => _withdrawals),
+      groupSummaryProvider('berkley-square-ajo').overrideWith((ref) async => _groupSummary),
       themeModeProvider.overrideWith(() => _ForcedMode(mode)),
     ],
     child: const KoloApp(),
@@ -305,6 +355,14 @@ void main() {
   testWidgets('login dark', (t) async {
     await _shoot(t, '08_login_dark', mode: ThemeMode.dark, signedIn: false,
         route: '/login');
+  });
+  testWidgets('payouts light', (t) async {
+    await _shoot(t, '16_payouts', mode: ThemeMode.light, signedIn: true,
+        route: '/programmes/prg_1/payouts');
+  });
+  testWidgets('payouts dark', (t) async {
+    await _shoot(t, '17_payouts_dark', mode: ThemeMode.dark, signedIn: true,
+        route: '/programmes/prg_1/payouts');
   });
   testWidgets('contribute light', (t) async {
     await _shoot(t, '14_contribute', mode: ThemeMode.light, signedIn: true,
