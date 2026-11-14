@@ -236,16 +236,13 @@ class _EntryTile extends StatelessWidget {
 
 /// A membership card.
 ///
-/// The left edge carries a citrus rule when the member holds an office in the
-/// group (founder, admin, treasurer) — a quiet signal of responsibility that
-/// does not require reading a label to notice.
+/// The role pill carries the standing. An earlier draft also drew a citrus rail
+/// down the edge for officers, which said the same thing twice in a louder
+/// colour — decoration standing in for information.
 class _MembershipCard extends StatelessWidget {
   const _MembershipCard({required this.group});
 
   final GroupSummary group;
-
-  bool get _isOfficer =>
-      const {'founder', 'admin', 'treasurer', 'owner'}.contains(group.myRole.toLowerCase());
 
   @override
   Widget build(BuildContext context) {
@@ -259,8 +256,6 @@ class _MembershipCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_isOfficer)
-              Container(width: 3, color: c.accent),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(KoloSpace.lg),

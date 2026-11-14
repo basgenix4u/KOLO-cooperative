@@ -381,6 +381,10 @@ void main() {
     await _shoot(t, '08_login_dark', mode: ThemeMode.dark, signedIn: false,
         route: '/login');
   });
+  testWidgets('groups tab light', (t) async {
+    await _shoot(t, '21_groups', mode: ThemeMode.light, signedIn: true,
+        route: '/groups');
+  });
   testWidgets('profile light', (t) async {
     await _shoot(t, '18_profile', mode: ThemeMode.light, signedIn: true,
         route: '/account');

@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/providers.dart';
 import '../../../core/models/models.dart';
-import '../../../core/theme/kolo_theme.dart';
-import '../../../shared/widgets/common.dart';
+import '../../../design/components.dart';
+import '../../../design/navigation.dart';
+import '../../../design/tokens.dart';
+import '../../../design/typography.dart';
 import '../../auth/auth_controller.dart';
 
 /// Group chat.
@@ -88,7 +90,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     } on ApiException catch (error) {
       if (!mounted) return;
       // The body is kept in the field so nothing typed is lost.
-      showMessage(context, error.userMessage, isError: true);
+      koloToast(context, error.userMessage, isError: true);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -108,27 +110,53 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
+    final c = context.colors;
     final myId = ref.watch(sessionProvider).value?.id ?? '';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Group chat')),
+      backgroundColor: c.ground,
       body: SafeArea(
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  KoloSpace.page, KoloSpace.sm, KoloSpace.page, KoloSpace.sm),
+              child: Row(
+                children: [
+                  KoloBackButton(onTap: () => Navigator.of(context).maybePop()),
+                  const SizedBox(width: KoloSpace.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Group chat', style: context.text.titleMedium),
+                        Text(
+                          widget.slug.replaceAll('-', ' '),
+                          style: context.text.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(color: c.hairline, height: 1),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
                       ? Padding(
                           padding: const EdgeInsets.all(20),
-                          child: ErrorNotice(
-                            error: ApiException(code: 'chat', message: _error!),
+                          child: KoloErrorState(
+                            message: _error!,
+                            title: 'The conversation did not load',
                             onRetry: _load,
                           ),
                         )
                       : _messages.isEmpty
-                          ? const EmptyState(
+                          ? const KoloEmptyState(
                               icon: Icons.forum_outlined,
                               title: 'No messages yet',
                               message: 'Say hello. Contributions are announced here too, '
@@ -147,13 +175,17 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                               },
                             ),
             ),
+            // The composer rides above the keyboard and keeps its own safe area,
+            // so the send button is never under the home indicator.
             Container(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              padding: EdgeInsets.fromLTRB(
+                  KoloSpace.md, KoloSpace.sm, KoloSpace.md, KoloSpace.sm),
               decoration: BoxDecoration(
-                color: palette.surface,
-                border: Border(top: BorderSide(color: palette.divider)),
+                color: c.surface,
+                border: Border(top: BorderSide(color: c.hairline)),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
                     child: TextField(
@@ -161,23 +193,38 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                       minLines: 1,
                       maxLines: 4,
                       textCapitalization: TextCapitalization.sentences,
+                      style: TextStyle(
+                        fontFamily: KoloType.family,
+                        fontSize: 15.5,
+                        color: c.text,
+                      ),
                       decoration: const InputDecoration(
                         hintText: 'Message the group',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: KoloSpace.lg, vertical: KoloSpace.md + 2),
                       ),
                       onSubmitted: (_) => _send(),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    onPressed: _sending || _conversationId == null ? null : _send,
-                    icon: _sending
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.send_rounded, size: 20),
+                  const SizedBox(width: KoloSpace.sm),
+                  SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: FilledButton(
+                      onPressed: _sending || _conversationId == null ? null : _send,
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        shape: const CircleBorder(),
+                      ),
+                      child: _sending
+                          ? SizedBox(
+                              width: 17,
+                              height: 17,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2, color: c.accentOn),
+                            )
+                          : Icon(Icons.arrow_upward_rounded, size: 21, color: c.accentOn),
+                    ),
                   ),
                 ],
               ),
@@ -197,7 +244,7 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
+    final c = context.colors;
     final time = message.createdAt;
     final stamp = time == null
         ? ''
@@ -213,28 +260,30 @@ class _MessageBubble extends StatelessWidget {
               padding: const EdgeInsets.only(left: 4, bottom: 3),
               child: Text(
                 message.senderName,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                style: context.text.bodySmall?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
           Container(
             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(
+                horizontal: KoloSpace.lg, vertical: KoloSpace.md),
             decoration: BoxDecoration(
-              color: isMine ? palette.accent : palette.surface,
+              color: isMine ? c.accent : c.surface,
               borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(isMine ? 16 : 4),
-                bottomRight: Radius.circular(isMine ? 4 : 16),
+                topLeft: const Radius.circular(KoloRadius.lg),
+                topRight: const Radius.circular(KoloRadius.lg),
+                bottomLeft: Radius.circular(isMine ? KoloRadius.lg : KoloRadius.sm),
+                bottomRight: Radius.circular(isMine ? KoloRadius.sm : KoloRadius.lg),
               ),
-              border: isMine ? null : Border.all(color: palette.divider),
+              border: isMine ? null : Border.all(color: c.hairline),
             ),
             child: Text(
               message.isDeleted ? 'This message was removed' : message.body,
               style: TextStyle(
+                fontFamily: KoloType.family,
                 fontSize: 15,
-                height: 1.35,
-                color: isMine ? palette.surface : palette.text,
+                height: 1.4,
+                color: isMine ? c.accentOn : c.text,
                 fontStyle: message.isDeleted ? FontStyle.italic : FontStyle.normal,
               ),
             ),
@@ -242,7 +291,7 @@ class _MessageBubble extends StatelessWidget {
           if (stamp.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 3, left: 4, right: 4),
-              child: Text(stamp, style: Theme.of(context).textTheme.bodySmall),
+              child: Text(stamp, style: context.text.bodySmall?.copyWith(color: c.textFaint)),
             ),
         ],
       ),
