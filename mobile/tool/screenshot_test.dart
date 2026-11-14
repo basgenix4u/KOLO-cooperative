@@ -258,6 +258,30 @@ final _groupSummary = <String, dynamic>{
   ],
 };
 
+final _notifications = [
+  AppNotification(
+    id: 'n1', kind: 'payout', title: 'A payout needs your approval',
+    body: 'Fatima Bello requested 50,000.00 to leave the group for Monthly rotation.',
+    readAt: null, createdAt: DateTime.now().subtract(const Duration(minutes: 20)),
+  ),
+  AppNotification(
+    id: 'n2', kind: 'contribution', title: 'Payment confirmed',
+    body: 'Your 50,000.00 contribution to Berkley Square Ajo was confirmed. '
+        'Reference KOLO-8F2A91.',
+    readAt: null, createdAt: DateTime.now().subtract(const Duration(hours: 4)),
+  ),
+  AppNotification(
+    id: 'n3', kind: 'governance', title: 'Vote closes tomorrow',
+    body: 'Three members have voted on moving the rotation order.',
+    readAt: DateTime.now(), createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
+  ),
+  AppNotification(
+    id: 'n4', kind: 'reminder', title: 'Contribution due in 3 days',
+    body: 'Monthly rotation — cycle 4.',
+    readAt: DateTime.now(), createdAt: DateTime.now().subtract(const Duration(days: 3)),
+  ),
+];
+
 Widget _app({required ThemeMode mode, required bool signedIn}) {
   return ProviderScope(
     overrides: [
@@ -277,6 +301,7 @@ Widget _app({required ThemeMode mode, required bool signedIn}) {
       // cycles on build. Without this it opens a real socket and leaves a timer.
       programmeCyclesProvider('prg_1').overrideWith((ref) async => <RotationCycle>[]),
       programmeWithdrawalsProvider('prg_1').overrideWith((ref) async => _withdrawals),
+      notificationsProvider.overrideWith((ref) async => _notifications),
       groupSummaryProvider('berkley-square-ajo').overrideWith((ref) async => _groupSummary),
       themeModeProvider.overrideWith(() => _ForcedMode(mode)),
     ],
@@ -355,6 +380,18 @@ void main() {
   testWidgets('login dark', (t) async {
     await _shoot(t, '08_login_dark', mode: ThemeMode.dark, signedIn: false,
         route: '/login');
+  });
+  testWidgets('profile light', (t) async {
+    await _shoot(t, '18_profile', mode: ThemeMode.light, signedIn: true,
+        route: '/account');
+  });
+  testWidgets('profile dark', (t) async {
+    await _shoot(t, '19_profile_dark', mode: ThemeMode.dark, signedIn: true,
+        route: '/account');
+  });
+  testWidgets('notifications light', (t) async {
+    await _shoot(t, '20_notifications', mode: ThemeMode.light, signedIn: true,
+        route: '/notifications');
   });
   testWidgets('payouts light', (t) async {
     await _shoot(t, '16_payouts', mode: ThemeMode.light, signedIn: true,
