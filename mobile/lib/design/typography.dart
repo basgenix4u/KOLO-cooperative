@@ -122,3 +122,12 @@ class KoloType {
         fontFeatures: const [FontFeature.tabularFigures()],
       );
 }
+
+/// Turns a server token into something a person reads: `pending_approval` into
+/// "Pending approval". Used wherever a raw status or category is displayed.
+String koloHumanise(String raw) {
+  if (raw.isEmpty) return '';
+  final words = raw.replaceAll('_', ' ').trim();
+  if (words.isEmpty) return '';
+  return words[0].toUpperCase() + words.substring(1);
+}

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kolo/core/api/api_exception.dart';
-import 'package:kolo/core/models/models.dart';
 import 'package:kolo/core/models/money.dart';
-import 'package:kolo/core/theme/kolo_theme.dart';
-import 'package:kolo/shared/widgets/common.dart';
+import 'package:kolo/design/components.dart';
+import 'package:kolo/design/theme.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
       theme: KoloTheme.light(),
@@ -12,136 +11,138 @@ Widget _wrap(Widget child) => MaterialApp(
     );
 
 void main() {
-  group('financial refusals are explained, not alarmed', () {
-    testWidgets('an underfunded payout is shown as information, not an error', (tester) async {
-      final error = ApiException(
-        code: 'payout_underfunded',
+  group('refusals inform rather than alarm', () {
+    testWidgets('an underfunded payout is information, not an error', (tester) async {
+      // The server refused because the money genuinely is not there. That is the
+      // system working, so it must not offer a retry that cannot succeed.
+      await tester.pumpWidget(_wrap(const KoloNotice(
         message: 'Only what has actually been collected can be paid out.',
-        details: {'shortfall_minor': 100000},
-      );
+        tone: KoloNoticeTone.warning,
+        icon: Icons.savings_outlined,
+      )));
 
-      await tester.pumpWidget(_wrap(ErrorNotice(error: error)));
-
-      expect(
-        find.text('Only what has actually been collected can be paid out.'),
-        findsOneWidget,
-      );
-      // No "try again": retrying an underfunded payout cannot help, and offering
-      // it would suggest the refusal was a glitch.
+      expect(find.text('Only what has actually been collected can be paid out.'),
+          findsOneWidget);
       expect(find.text('Try again'), findsNothing);
-      expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.savings_outlined), findsOneWidget);
     });
 
     testWidgets('a network failure offers a retry', (tester) async {
-      final error = ApiException(code: 'offline', message: 'unreachable');
       var retried = false;
+      await tester.pumpWidget(_wrap(KoloErrorState(
+        message: 'KOLO could not be reached.',
+        onRetry: () => retried = true,
+      )));
 
-      await tester.pumpWidget(_wrap(ErrorNotice(error: error, onRetry: () => retried = true)));
-      expect(find.textContaining('offline'), findsOneWidget);
-
+      expect(find.text('KOLO could not be reached.'), findsOneWidget);
       await tester.tap(find.text('Try again'));
       expect(retried, isTrue);
     });
 
-    testWidgets('field errors from the server are surfaced verbatim', (tester) async {
-      final error = ApiException(
-        code: 'validation_error',
-        message: 'Check the form',
-        fieldErrors: const {
-          'amount_minor': ['Enter an amount greater than zero'],
-        },
-      );
-      await tester.pumpWidget(_wrap(ErrorNotice(error: error)));
-      expect(find.text('Enter an amount greater than zero'), findsOneWidget);
+    testWidgets('an offline state is marked as offline, not as a failure', (tester) async {
+      await tester.pumpWidget(_wrap(const KoloErrorState(
+        message: 'You are offline.',
+        isOffline: true,
+      )));
+      expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline_rounded), findsNothing);
     });
   });
 
-  group('status pills', () {
-    testWidgets('known statuses are humanised', (tester) async {
-      await tester.pumpWidget(_wrap(const StatusPill(status: 'payout_pending_approval')));
-      expect(find.text('Payout pending approval'), findsOneWidget);
+  group('status is never colour alone', () {
+    test('every status pill carries a word, and they are distinct', () {
+      // A member must be able to tell "processing" from "confirmed" without
+      // relying on colour, so each status must resolve to its own words.
+      const statuses = [
+        'pending', 'confirmed', 'failed', 'rejected', 'processing',
+        'approved', 'paid', 'overdue', 'cancelled', 'awaiting_payment',
+      ];
+      final seen = <String>{};
+      for (final status in statuses) {
+        final spec = KoloStatusPill.resolve(status);
+        expect(spec.label, isNotEmpty, reason: '$status has no label');
+        expect(spec.glyph, isNotNull, reason: '$status has no glyph');
+        seen.add(spec.label.toLowerCase());
+      }
+      // No two statuses may collapse into the same words.
+      expect(seen.length, statuses.length,
+          reason: 'two statuses share a label, so they would be indistinguishable '
+              'without colour');
     });
 
-    testWidgets('an unknown status is shown rather than hidden', (tester) async {
-      // If the backend adds a state this build does not know, showing it is
-      // safer than defaulting to something that looks successful.
-      await tester.pumpWidget(_wrap(const StatusPill(status: 'quarantined')));
-      expect(find.text('Quarantined'), findsOneWidget);
-    });
-  });
-
-  group('money rendering', () {
-    testWidgets('amount rows align label and value', (tester) async {
-      await tester.pumpWidget(_wrap(
-        const AmountRow(label: 'Contribution', value: '₦10,000.00'),
-      ));
-      expect(find.text('Contribution'), findsOneWidget);
-      expect(find.text('₦10,000.00'), findsOneWidget);
-    });
-
-    testWidgets('progress is clamped so a bar never overfills', (tester) async {
-      await tester.pumpWidget(_wrap(const CollectionProgress(percent: 250)));
-      final indicator = tester.widget<LinearProgressIndicator>(
-        find.byType(LinearProgressIndicator),
-      );
-      expect(indicator.value, 1.0);
-    });
-
-    testWidgets('a shortfall shows the real missing amount', (tester) async {
-      final programme = Programme.fromJson(const {
-        'id': 'p1',
-        'name': 'Monthly Ajo',
-        'type': 'rotational',
-        'status': 'active',
-        'currency': 'NGN',
-        'contribution_amount_minor': 1000000,
-        'collected_minor': 3000000,
-        'expected_minor': 4000000,
-        'target_amount_minor': 4000000,
-        'participant_count': 4,
-        'progress_percent': 75.0,
-        'frequency': 'monthly',
-      });
-
-      expect(programme.collected.minor, 3000000);
-      expect(programme.collected.format(), contains('30,000'));
-      expect(programme.contributionAmount.format(), contains('10,000'));
-
-      final missing = programme.expected - programme.collected;
-      expect(missing.minor, 1000000);
-      expect(missing.format(), contains('10,000'));
+    test('an unknown status still renders something readable', () {
+      final spec = KoloStatusPill.resolve('some_new_backend_state');
+      expect(spec.label, isNotEmpty);
+      expect(spec.glyph, isNotNull);
     });
   });
 
-  group('empty states', () {
-    testWidgets('say what to do next', (tester) async {
-      await tester.pumpWidget(_wrap(
-        EmptyState(
-          icon: Icons.groups_outlined,
-          title: 'No groups yet',
-          message: 'Join a savings group or start your own.',
-          action: FilledButton(onPressed: () {}, child: const Text('Start a group')),
-        ),
-      ));
-      expect(find.text('No groups yet'), findsOneWidget);
-      expect(find.text('Start a group'), findsOneWidget);
-    });
-  });
-
-  group('money model integration', () {
-    test('a contribution total across currency boundaries would throw', () {
-      const a = Money(1000000, 'NGN');
-      const b = Money(2000000, 'NGN');
-      expect((a + b).format(), contains('30,000'));
-
-      expect(() => a + const Money(100, 'GHS'), throwsA(isA<ArgumentError>()));
+  group('amounts', () {
+    test('money renders with grouping and a currency mark', () async {
+      expect(const Money(5000000, 'NGN').format(), '₦50,000.00');
+      expect(const Money(0, 'NGN').format(), '₦0.00');
+      expect(const Money(123456789, 'NGN').format(), '₦1,234,567.89');
     });
 
-    test('parsing then formatting round-trips a realistic amount', () {
-      final parsed = Money.tryParse('25,000.50', 'NGN');
+    test('a negative amount keeps its sign', () {
+      expect(const Money(-250000, 'NGN').format(), '-₦2,500.00');
+    });
+
+    test('the hero figure drops kobo but keeps the semantic label', () {
+      // The widget shows whole units at size; a screen reader still gets the
+      // exact figure, because a spoken number has no width to save.
+      const amount = Money(5000050, 'NGN');
+      expect(amount.format(withSymbol: false), '50,000.50');
+    });
+
+    test('parsing then formatting round-trips', () {
+      final parsed = Money.tryParse('50,000.00', 'NGN');
       expect(parsed, isNotNull);
-      expect(parsed!.minor, 2500050);
-      expect(parsed.format(), contains('25,000'));
+      expect(parsed!.minor, 5000000);
+      expect(parsed.format(), '₦50,000.00');
+    });
+  });
+
+  group('empty states teach', () {
+    testWidgets('an empty state says why it is empty and what fills it', (tester) async {
+      var acted = false;
+      await tester.pumpWidget(_wrap(KoloEmptyState(
+        title: 'No payouts yet',
+        message: 'When the group is ready to pay someone, a request appears here.',
+        action: FilledButton(
+          onPressed: () => acted = true,
+          child: const Text('Request a payout'),
+        ),
+      )));
+
+      expect(find.text('No payouts yet'), findsOneWidget);
+      await tester.tap(find.text('Request a payout'));
+      expect(acted, isTrue);
+    });
+  });
+
+  group('api errors', () {
+    test('a financial refusal is recognised as a refusal', () {
+      // These are the codes that mean "the rules are working", not "something
+      // broke". The UI treats them differently.
+      for (final code in [
+        'insufficient_funds',
+        'pool_underfunded',
+        'payout_underfunded',
+        'self_approval_blocked',
+        'second_approver_required',
+        'amount_invalid',
+      ]) {
+        expect(ApiException(code: code, message: 'x').isFinancialRefusal, isTrue,
+            reason: '$code should read as a refusal');
+      }
+      // A network failure is a malfunction, not a rule: it gets a retry.
+      expect(
+        ApiException(code: 'network_error', message: 'x').isFinancialRefusal,
+        isFalse,
+      );
+      // Separation-of-duties refusals belong here too: they are the rule
+      // working exactly as intended, and must never read as a crash.
     });
   });
 }

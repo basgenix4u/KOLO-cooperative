@@ -199,9 +199,21 @@ class KoloStatusPill extends StatelessWidget {
   final String? label;
   final bool compact;
 
-  /// Maps every server status string this app can receive onto a visual
-  /// meaning. Unknown statuses fall through to neutral rather than guessing.
-  _StatusTone get _tone {
+  /// Resolves a server status string to the words and glyph it will be shown
+  /// with. Public because this mapping is what stops a member having to read
+  /// colour alone, so it is worth testing directly.
+  static KoloStatusSpec resolve(String status) {
+    final tone = _toneFor(status);
+    return KoloStatusSpec(
+      label: _humanise(status),
+      glyph: _glyphFor(tone),
+      tone: tone,
+    );
+  }
+
+  _StatusTone get _tone => _toneFor(status);
+
+  static _StatusTone _toneFor(String status) {
     const settled = {
       'active', 'confirmed', 'settled', 'paid', 'succeeded', 'passed', 'approved',
       'completed', 'verified',
@@ -222,7 +234,9 @@ class KoloStatusPill extends StatelessWidget {
     return _StatusTone.neutral;
   }
 
-  IconData get _icon => switch (_tone) {
+  IconData get _icon => _glyphFor(_tone);
+
+  static IconData _glyphFor(_StatusTone tone) => switch (tone) {
         _StatusTone.settled => Icons.check_circle_rounded,
         _StatusTone.pending => Icons.schedule_rounded,
         _StatusTone.failed => Icons.error_rounded,
@@ -274,6 +288,22 @@ class KoloStatusPill extends StatelessWidget {
 }
 
 enum _StatusTone { settled, pending, failed, highlighted, neutral }
+
+/// What a status will be rendered as: a word, a glyph and a tone.
+///
+/// Every status must resolve to all three. Colour is the last of them, because a
+/// member with a colour-vision deficiency reads the word and the shape first.
+class KoloStatusSpec {
+  const KoloStatusSpec({
+    required this.label,
+    required this.glyph,
+    required this.tone,
+  });
+
+  final String label;
+  final IconData glyph;
+  final Object tone;
+}
 
 String _humanise(String raw) {
   if (raw.isEmpty) return '';

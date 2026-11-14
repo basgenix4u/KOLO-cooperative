@@ -7,7 +7,8 @@ import '../../../core/models/models.dart';
 import '../../../design/components.dart';
 import '../../../design/navigation.dart';
 import '../../../design/tokens.dart';
-import '../../../shared/widgets/common.dart' show humanise;
+import '../../../design/typography.dart';
+
 import '../savings_providers.dart';
 
 /// Everything this member owes and everything they have paid.
@@ -168,7 +169,7 @@ class ContributionsScreen extends ConsumerWidget {
     if (contribution.createdAt != null) {
       return DateFormat('d MMM yyyy').format(contribution.createdAt!);
     }
-    return humanise(contribution.status);
+    return koloHumanise(contribution.status);
   }
 
   static String _friendly(Object error) {

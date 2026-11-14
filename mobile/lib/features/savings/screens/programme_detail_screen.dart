@@ -4,8 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/models/models.dart';
-import '../../../core/theme/kolo_theme.dart';
-import '../../../shared/widgets/common.dart';
+import '../../../design/components.dart';
+import '../../../design/navigation.dart';
+import '../../../design/tokens.dart';
+import '../../../design/typography.dart';
+
 import '../savings_providers.dart';
 
 /// The programme screen: what is collected, whose turn is next, and — always —
@@ -17,22 +20,30 @@ class ProgrammeDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = context.kolo;
+    final palette = context.colors;
     final programme = ref.watch(programmeProvider(programmeId));
     final cycles = ref.watch(programmeCyclesProvider(programmeId));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(programme.value?.name ?? 'Programme'),
-        actions: [
-          // Money out gets its own screen: a payout needs an account number and
-          // a second officer, which does not belong in a header button.
-          IconButton(
-            tooltip: 'Payouts',
-            icon: const Icon(Icons.account_balance_outlined),
-            onPressed: programme.value == null
-                ? null
-                : () => context.push(
+      backgroundColor: palette.ground,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(programmeProvider(programmeId));
+          ref.invalidate(programmeCyclesProvider(programmeId));
+        },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+              KoloSpace.page, KoloSpace.sm, KoloSpace.page, KoloSpace.hero),
+          children: [
+            Row(
+              children: [
+                KoloBackButton(onTap: () => Navigator.of(context).maybePop()),
+                const Spacer(),
+                // Money out gets its own screen: a payout needs an account number
+                // and a second officer, which does not belong in a header button.
+                if (programme.value != null)
+                  TextButton.icon(
+                    onPressed: () => context.push(
                       '/programmes/$programmeId/payouts',
                       extra: {
                         'name': programme.value!.name,
@@ -40,39 +51,38 @@ class ProgrammeDetailScreen extends ConsumerWidget {
                         'slug': programme.value!.groupSlug,
                       },
                     ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(programmeProvider(programmeId));
-          ref.invalidate(programmeCyclesProvider(programmeId));
-        },
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          children: [
+                    icon: const Icon(Icons.account_balance_outlined, size: 17),
+                    label: const Text('Payouts'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: KoloSpace.md),
             programme.when(
               data: (value) => _ProgrammeSummary(programme: value),
-              loading: () => const SizedBox(height: 120),
-              error: (error, _) => ErrorNotice(
-                error: error,
+              loading: () => const KoloSkeletonCard(height: 220),
+              error: (error, _) => KoloErrorState(
+                message: 'This programme could not be loaded. Pull down to try again.',
+                title: 'Programme did not load',
                 onRetry: () => ref.invalidate(programmeProvider(programmeId)),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: KoloSpace.section),
             Text('This cycle', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 10),
+            const SizedBox(height: KoloSpace.md),
             ...switch (cycles) {
-              AsyncValue(hasError: true, :final error?) => [ErrorNotice(error: error)],
-              AsyncValue(isLoading: true, hasValue: false) => [
-                  const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
+              AsyncValue(hasError: true) => [
+                  const KoloNotice(
+                    message: 'The cycles for this programme could not be loaded.',
+                    tone: KoloNoticeTone.warning,
+                    icon: Icons.warning_amber_rounded,
                   ),
+                ],
+              AsyncValue(isLoading: true, hasValue: false) => [
+                  const KoloSkeletonCard(height: 132),
                 ],
               AsyncValue(:final value?) => value.isEmpty
                   ? [
-                      const EmptyState(
+                      const KoloEmptyState(
                         icon: Icons.event_repeat_outlined,
                         title: 'No cycle open',
                         message: 'A cycle opens when the programme starts collecting.',
@@ -81,24 +91,22 @@ class ProgrammeDetailScreen extends ConsumerWidget {
                   : [for (final cycle in value) _CycleCard(cycle: cycle, programmeId: programmeId)],
               _ => const [SizedBox.shrink()],
             },
-            const SizedBox(height: 20),
+            const SizedBox(height: KoloSpace.xl),
             programme.when(
               data: (value) => value.isActive
-                  ? FilledButton(
-                      onPressed: () => context.push('/programmes/$programmeId/contribute'),
-                      child: const Text('Make a contribution'),
+                  ? SizedBox(
+                      height: 52,
+                      child: FilledButton(
+                        onPressed: () =>
+                            context.push('/programmes/$programmeId/contribute'),
+                        child: const Text('Make a contribution'),
+                      ),
                     )
-                  : Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: palette.ground,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'This programme is ${humanise(value.status).toLowerCase()}, so it is not '
-                        'collecting right now.',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
+                  : KoloNotice(
+                      message: 'This programme is ${koloHumanise(value.status).toLowerCase()}, '
+                          'so it is not collecting right now.',
+                      tone: KoloNoticeTone.neutral,
+                      icon: Icons.pause_circle_outline_rounded,
                     ),
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
@@ -117,64 +125,54 @@ class _ProgrammeSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: palette.divider),
-      ),
+    final c = context.colors;
+    final target = programme.target.minor > 0 ? programme.target : programme.expected;
+    final percent = target.minor > 0
+        ? (programme.collected.minor / target.minor * 100).clamp(0, 100).toDouble()
+        : 0.0;
+
+    return KoloCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
-                child: Text(programme.name, style: Theme.of(context).textTheme.titleLarge),
+                child: Text(programme.name, style: Theme.of(context).textTheme.headlineSmall),
               ),
-              StatusPill(status: programme.status),
+              const SizedBox(width: KoloSpace.sm),
+              KoloStatusPill(status: programme.status, compact: true),
             ],
           ),
-          const SizedBox(height: 18),
-          Text('Collected so far', style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 4),
-          Text(programme.collected.format(), style: KoloTheme.moneyLarge(context.kolo.text)),
-          const SizedBox(height: 6),
-          Text(
-            'of ${(programme.target.minor > 0 ? programme.target : programme.expected).format()} expected',
-            style: Theme.of(context).textTheme.bodySmall,
+          const SizedBox(height: KoloSpace.xl),
+          Text('COLLECTED SO FAR', style: KoloType.eyebrow(c)),
+          const SizedBox(height: KoloSpace.sm),
+          KoloAmount(money: programme.collected, size: 32),
+          const SizedBox(height: KoloSpace.xs),
+          Text('of ${target.format()} expected', style: context.text.bodySmall),
+          const SizedBox(height: KoloSpace.lg),
+          KoloProgress(
+            value: percent / 100,
+            height: 7,
+            semanticLabel: 'Collected',
           ),
-          const SizedBox(height: 18),
-          const Divider(),
-          const SizedBox(height: 8),
-          AmountRow(
+          const SizedBox(height: KoloSpace.xl),
+          Divider(color: c.hairline, height: 1),
+          const SizedBox(height: KoloSpace.lg),
+          _FactRow(
             label: 'Contribution per member',
             value: programme.contributionAmount.format(),
           ),
-          AmountRow(label: 'Frequency', value: humanise(programme.frequency)),
-          AmountRow(label: 'Participants', value: '${programme.participantCount}'),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: palette.ground,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.verified_outlined, size: 16, color: palette.textFaint),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'This figure counts money that has actually been confirmed — not what members '
-                    'have promised.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: KoloSpace.sm + 2),
+          _FactRow(label: 'Frequency', value: koloHumanise(programme.frequency)),
+          const SizedBox(height: KoloSpace.sm + 2),
+          _FactRow(label: 'Participants', value: '${programme.participantCount}'),
+          const SizedBox(height: KoloSpace.lg),
+          KoloNotice(
+            message: 'This figure counts money that has actually been confirmed — not '
+                'what members have promised.',
+            tone: KoloNoticeTone.neutral,
+            icon: Icons.verified_outlined,
           ),
         ],
       ),
@@ -206,15 +204,12 @@ class _CycleCardState extends ConsumerState<_CycleCard> {
     } on ApiException catch (error) {
       if (!mounted) return;
       // A refusal here is the system working: show the server's own words.
-      await showDialog<void>(
-        context: context,
-        builder: (context) => KoloDialog(
-          title: Text(error.isFinancialRefusal ? 'Not yet' : 'Could not complete'),
-          content: Text(error.userMessage),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Understood')),
-          ],
-        ),
+      koloToast(
+        context,
+        error.isFinancialRefusal
+            ? 'Not yet — ${error.userMessage}'
+            : error.userMessage,
+        isError: true,
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -223,14 +218,14 @@ class _CycleCardState extends ConsumerState<_CycleCard> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
+    final c = context.colors;
     final cycle = widget.cycle;
     final percent = cycle.payoutAmount.minor > 0
         ? (cycle.collectedTotal.minor / cycle.payoutAmount.minor * 100).clamp(0, 100).toDouble()
         : 0.0;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: KoloSpace.md),
       child: KoloCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,51 +236,46 @@ class _CycleCardState extends ConsumerState<_CycleCard> {
                   child: Text(
                     'Cycle ${cycle.sequence} · ${cycle.beneficiaryName}',
                     style: Theme.of(context).textTheme.titleMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                StatusPill(status: cycle.status),
+                KoloStatusPill(status: cycle.status, compact: true),
               ],
             ),
             const SizedBox(height: 14),
-            CollectionProgress(percent: percent, height: 10),
+            KoloProgress(value: percent / 100, height: 7, semanticLabel: 'Cycle funding'),
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(cycle.collectedTotal.format(), style: KoloTheme.moneyMedium(context.kolo.text)),
+                Text(cycle.collectedTotal.format(), style: KoloType.money(c, size: 15, weight: FontWeight.w600)),
                 Text(
                   'of ${cycle.payoutAmount.format()}',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: context.text.bodySmall,
                 ),
               ],
             ),
             const SizedBox(height: 10),
             // The honest line: what is still missing, in money.
             if (!cycle.isPaid && cycle.shortfall.minor > 0)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: palette.moneySoft,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${cycle.shortfall.format()} still to collect before this payout can be made. '
-                  'KOLO will not pay out money the group has not received.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: palette.text),
-                ),
+              KoloNotice(
+                message: '${cycle.shortfall.format()} still to collect before this payout '
+                    'can be made. KOLO will not pay out money the group has not received.',
+                tone: KoloNoticeTone.warning,
+                icon: Icons.savings_outlined,
               ),
             if (cycle.isPaid)
               Row(
                 children: [
-                  Icon(Icons.check_circle_outline, size: 16, color: palette.success),
-                  const SizedBox(width: 6),
+                  Icon(Icons.check_circle_outline, size: 15, color: c.settled),
+                  const SizedBox(width: KoloSpace.xs + 2),
                   Text(
                     'Paid${cycle.paidAt != null ? ' on ${_date(cycle.paidAt!)}' : ''}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: palette.success,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    style: context.text.bodySmall?.copyWith(
+                      color: c.settled,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -294,36 +284,42 @@ class _CycleCardState extends ConsumerState<_CycleCard> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _run(
-                                () => ref
-                                    .read(moneyActionsProvider)
-                                    .approvePayout(cycle.id, widget.programmeId),
-                              ),
-                      child: const Text('Approve'),
+                    child: SizedBox(
+                      height: 46,
+                      child: OutlinedButton(
+                        onPressed: _busy
+                            ? null
+                            : () => _run(
+                                  () => ref
+                                      .read(moneyActionsProvider)
+                                      .approvePayout(cycle.id, widget.programmeId),
+                                ),
+                        child: const Text('Approve', maxLines: 1),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: KoloSpace.sm),
                   Expanded(
-                    child: FilledButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _run(
-                                () => ref
-                                    .read(moneyActionsProvider)
-                                    .executePayout(cycle.id, widget.programmeId),
-                              ),
-                      child: const Text('Pay out'),
+                    child: SizedBox(
+                      height: 46,
+                      child: FilledButton(
+                        onPressed: _busy
+                            ? null
+                            : () => _run(
+                                  () => ref
+                                      .read(moneyActionsProvider)
+                                      .executePayout(cycle.id, widget.programmeId),
+                                ),
+                        child: const Text('Pay out', maxLines: 1),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: KoloSpace.sm),
               Text(
                 'Approving and paying out must be done by two different officers.',
-                style: Theme.of(context).textTheme.bodySmall,
+                style: context.text.bodySmall?.copyWith(color: c.textFaint),
               ),
             ],
           ],
@@ -337,5 +333,25 @@ class _CycleCardState extends ConsumerState<_CycleCard> {
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return '${value.day} ${months[value.month - 1]}';
+  }
+}
+
+class _FactRow extends StatelessWidget {
+  const _FactRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(label, style: context.text.bodySmall),
+        ),
+        const SizedBox(width: KoloSpace.md),
+        Text(value, style: context.text.titleSmall),
+      ],
+    );
   }
 }

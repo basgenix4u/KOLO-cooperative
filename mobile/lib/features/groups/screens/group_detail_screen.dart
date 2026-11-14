@@ -7,7 +7,7 @@ import '../../../design/components.dart';
 import '../../../design/navigation.dart';
 import '../../../design/tokens.dart';
 import '../../../design/typography.dart';
-import '../../../shared/widgets/common.dart' show humanise;
+
 import '../../savings/savings_providers.dart';
 
 /// A group's home.
@@ -253,7 +253,7 @@ class _GroupHeadline extends StatelessWidget {
                   ),
                   const SizedBox(height: KoloSpace.xs + 2),
                   Text(
-                    _capitalise(humanise(group.myRole)),
+                    _capitalise(koloHumanise(group.myRole)),
                     style: context.text.headlineSmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -296,7 +296,7 @@ class _GroupHeadline extends StatelessWidget {
             ),
             _Fact(
               icon: Icons.category_outlined,
-              value: _capitalise(humanise(group.category)),
+              value: _capitalise(koloHumanise(group.category)),
               label: 'type',
             ),
           ],
@@ -408,7 +408,7 @@ class _ProgrammeTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${_capitalise(humanise(programme.type))} · '
+                      '${_capitalise(koloHumanise(programme.type))} · '
                       '${programme.participantCount} participating',
                       style: context.text.bodySmall,
                       maxLines: 1,

@@ -6,10 +6,11 @@ import '../../core/models/models.dart';
 import '../../design/components.dart';
 import '../../design/navigation.dart';
 import '../../design/tokens.dart';
+import '../../design/typography.dart';
 import '../auth/auth_controller.dart';
 import '../savings/savings_providers.dart';
 import '../../core/theme/theme_mode.dart';
-import '../../shared/widgets/common.dart' show humanise;
+
 
 /// The account tab.
 ///
@@ -111,7 +112,7 @@ class ProfileScreen extends ConsumerWidget {
                                       ? 'Contribution'
                                       : value[i].programmeName,
                                   subtitle: value[i].reference.isEmpty
-                                      ? humanise(value[i].status)
+                                      ? koloHumanise(value[i].status)
                                       : value[i].reference,
                                   amount: value[i].amount,
                                   status: value[i].status,

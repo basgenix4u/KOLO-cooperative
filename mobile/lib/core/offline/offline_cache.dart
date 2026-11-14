@@ -8,7 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/auth/auth_controller.dart';
 import '../api/api_client.dart';
 import '../api/providers.dart';
-import '../theme/kolo_theme.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart' as design;
 
 /// A read-through cache for GETs, so a member on a bad connection sees their
 /// group rather than a spinner.
@@ -202,35 +203,26 @@ class CachedNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: palette.moneySoft,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.cloud_off_rounded, size: 16, color: palette.moneyInk),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '$ageLabel — you are offline, so this may have changed.',
-              style: TextStyle(fontSize: 12.5, height: 1.35, color: palette.text),
-            ),
-          ),
-          if (onRetry != null)
-            TextButton(
-              onPressed: onRetry,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(0, 32),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    // Reuses the design system's notice rather than hand-rolling a fourth
+    // variant of the same strip. A stale balance must wear a label; it should not
+    // also wear a bespoke layout.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: design.KoloSpace.md),
+      child: KoloNotice(
+        message: '$ageLabel — you are offline, so this may have changed.',
+        tone: KoloNoticeTone.warning,
+        icon: Icons.cloud_off_rounded,
+        action: onRetry == null
+            ? null
+            : TextButton(
+                onPressed: onRetry,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: design.KoloSpace.sm),
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Retry'),
               ),
-              child: const Text('Retry'),
-            ),
-        ],
       ),
     );
   }
