@@ -1,169 +1,223 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/models/models.dart';
-import '../../../core/theme/kolo_theme.dart';
-import '../../../shared/widgets/common.dart';
+import '../../../design/components.dart';
+import '../../../design/navigation.dart';
+import '../../../design/tokens.dart';
+import '../../../shared/widgets/common.dart' show humanise;
 import '../savings_providers.dart';
 
-/// What this member owes and what they have paid, in one place.
+/// Everything this member owes and everything they have paid.
 ///
-/// This is the destination for a "pay" deep link. The link carries no amount:
-/// a URL is not a source of truth for money, so the member is shown what the
-/// server says they owe and chooses from that.
+/// This is also the destination for a "pay" deep link. The link carries no
+/// amount — a URL is not a source of truth for money — so the member is shown
+/// what the server says they owe and chooses from that.
+///
+/// Layout order is deliberate: what is owed, then what has been paid. A member
+/// opening this screen is usually checking whether they owe something. History is
+/// the second question, and gets the second position.
 class ContributionsScreen extends ConsumerWidget {
   const ContributionsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = context.kolo;
+    final c = context.colors;
     final obligations = ref.watch(myObligationsProvider);
     final history = ref.watch(myContributionsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Contributions')),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(myObligationsProvider);
-          ref.invalidate(myContributionsProvider);
-        },
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          children: [
-            Text('Due now', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            obligations.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 28),
-                child: Center(child: CircularProgressIndicator()),
+      backgroundColor: c.ground,
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(myObligationsProvider);
+            ref.invalidate(myContributionsProvider);
+          },
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: KoloSpace.hero),
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(
+                    KoloSpace.page, KoloSpace.md, KoloSpace.page, 0),
+                child: KoloPageHeader(
+                  eyebrow: 'What you owe, and what you have paid',
+                  title: 'Money',
+                ),
               ),
-              error: (error, _) => ErrorNotice(
-                error: error,
-                onRetry: () => ref.invalidate(myObligationsProvider),
+              const SizedBox(height: KoloSpace.section),
+
+              // --- Owed ------------------------------------------------------
+              KoloSectionHeader(
+                title: 'Due now',
+                padding: const EdgeInsets.fromLTRB(
+                    KoloSpace.page, 0, KoloSpace.page, KoloSpace.md),
+                action: obligations.maybeWhen(
+                  data: (rows) => rows.isEmpty
+                      ? null
+                      : Text(
+                          rows.length == 1 ? '1 payment' : '${rows.length} payments',
+                          style: context.text.bodySmall,
+                        ),
+                  orElse: () => null,
+                ),
               ),
-              data: (rows) {
-                if (rows.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: KoloCard(
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle_outline_rounded,
-                              color: palette.success, size: 20),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Nothing outstanding. You are up to date.',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ),
-                        ],
-                      ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: KoloSpace.page),
+                child: switch (obligations) {
+                  AsyncValue(hasError: true, :final error?) => KoloErrorState(
+                      message: _friendly(error),
+                      title: 'We could not load what you owe',
+                      onRetry: () => ref.invalidate(myObligationsProvider),
                     ),
-                  );
-                }
-                return Column(
-                  children: [
-                    for (final obligation in rows) ...[
-                      _ObligationTile(obligation: obligation),
-                      const SizedBox(height: 10),
-                    ],
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            Text('History', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            history.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 28),
-                child: Center(child: CircularProgressIndicator()),
+                  AsyncValue(isLoading: true, hasValue: false) =>
+                    const KoloSkeletonCard(height: 96),
+                  AsyncValue(:final value?) => value.isEmpty
+                      ? _AllSettled(
+                          onSeeHistory: () => _scrollToHistory(context),
+                        )
+                      : Column(
+                          children: [
+                            for (final obligation in value) ...[
+                              _ObligationCard(obligation: obligation),
+                              const SizedBox(height: KoloSpace.md),
+                            ],
+                          ],
+                        ),
+                  _ => const SizedBox.shrink(),
+                },
               ),
-              error: (error, _) => ErrorNotice(
-                error: error,
-                onRetry: () => ref.invalidate(myContributionsProvider),
+
+              const SizedBox(height: KoloSpace.section),
+
+              // --- Paid ------------------------------------------------------
+              KoloSectionHeader(
+                title: 'History',
+                padding: const EdgeInsets.fromLTRB(
+                    KoloSpace.page, 0, KoloSpace.page, KoloSpace.md),
+                action: history.maybeWhen(
+                  data: (rows) => rows.isEmpty
+                      ? null
+                      : Text('All time', style: context.text.bodySmall),
+                  orElse: () => null,
+                ),
               ),
-              data: (rows) {
-                if (rows.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.receipt_long_outlined,
-                    title: 'No payments yet',
-                    message: 'Once you pay into a programme, every payment appears here with the '
-                        'reference the server issued.',
-                  );
-                }
-                return KoloCard(
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < rows.length; i++) ...[
-                        if (i > 0) const Divider(height: 20),
-                        _HistoryRow(contribution: rows[i]),
-                      ],
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: KoloSpace.page),
+                child: switch (history) {
+                  AsyncValue(hasError: true, :final error?) => KoloErrorState(
+                      message: _friendly(error),
+                      title: 'History did not load',
+                      onRetry: () => ref.invalidate(myContributionsProvider),
+                    ),
+                  AsyncValue(isLoading: true, hasValue: false) =>
+                    const KoloSkeletonCard(height: 140),
+                  AsyncValue(:final value?) => value.isEmpty
+                      ? KoloEmptyState(
+                          icon: Icons.receipt_long_outlined,
+                          title: 'Nothing paid yet',
+                          message: 'When you pay into a programme, every payment appears '
+                              'here with the reference the server issued. That reference is '
+                              'what an officer can look up if there is ever a question.',
+                        )
+                      : KoloCard(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: KoloSpace.lg, vertical: KoloSpace.xs),
+                          child: Column(
+                            children: [
+                              for (var i = 0; i < value.length; i++)
+                                KoloActivityRow(
+                                  title: value[i].programmeName.isEmpty
+                                      ? 'Contribution'
+                                      : value[i].programmeName,
+                                  subtitle: _historySubtitle(value[i]),
+                                  amount: value[i].amount,
+                                  status: value[i].status,
+                                  showDivider: i < value.length - 1,
+                                ),
+                            ],
+                          ),
+                        ),
+                  _ => const SizedBox.shrink(),
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  static void _scrollToHistory(BuildContext context) {
+    // The history section is below; a nudge is enough to show there is more.
+    Scrollable.ensureVisible(
+      context,
+      duration: KoloMotion.base,
+      curve: KoloMotion.enter,
+    );
+  }
+
+  /// The reference is the important part of a past payment: it is the thing an
+  /// officer can search for when money and records disagree, so it gets the
+  /// line to itself rather than being truncated behind a date.
+  static String _historySubtitle(Contribution contribution) {
+    if (contribution.reference.isNotEmpty) return contribution.reference;
+    if (contribution.createdAt != null) {
+      return DateFormat('d MMM yyyy').format(contribution.createdAt!);
+    }
+    return humanise(contribution.status);
+  }
+
+  static String _friendly(Object error) {
+    final text = error.toString();
+    if (text.contains('network') || text.contains('SocketException')) {
+      return 'KOLO could not be reached. Check your connection and pull down to try again.';
+    }
+    return 'Pull down to try again. If this keeps happening, tell an officer.';
+  }
 }
 
-class _ObligationTile extends StatelessWidget {
-  const _ObligationTile({required this.obligation});
+/// Nothing owed is good news, so it is stated warmly rather than as an empty
+/// box. It still gives the member somewhere to go.
+class _AllSettled extends StatelessWidget {
+  const _AllSettled({required this.onSeeHistory});
 
-  final Obligation obligation;
+  final VoidCallback onSeeHistory;
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
-    final overdue = obligation.isOverdue;
-
+    final c = context.colors;
     return KoloCard(
-      child: Column(
+      color: c.settledWash,
+      border: c.settled.withValues(alpha: 0.22),
+      padding: const EdgeInsets.all(KoloSpace.lg),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(obligation.programmeName, style: Theme.of(context).textTheme.titleMedium),
-              ),
-              if (overdue)
-                Icon(Icons.schedule_rounded, size: 18, color: palette.danger)
-              else
-                Icon(Icons.event_available_outlined, size: 18, color: palette.textFaint),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(obligation.outstanding.format(), style: KoloTheme.moneyMedium(palette.text)),
-          const SizedBox(height: 2),
-          Text(
-            overdue
-                ? 'Overdue — it was due ${_formatDate(obligation.dueDate)}'
-                : 'Due ${_formatDate(obligation.dueDate)}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: overdue ? palette.danger : null,
+          Icon(Icons.task_alt_rounded, size: 20, color: c.settled),
+          const SizedBox(width: KoloSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'You are up to date',
+                  style: context.text.titleSmall?.copyWith(color: c.settled),
                 ),
-          ),
-          if (obligation.paid.minor > 0) ...[
-            const SizedBox(height: 6),
-            Text('${obligation.paid.format()} already paid',
-                style: Theme.of(context).textTheme.bodySmall),
-          ],
-          const SizedBox(height: 12),
-          FilledButton.tonal(
-            onPressed: obligation.programmeId.isEmpty
-                ? null
-                : () => context.push(
-                      '/programmes/${obligation.programmeId}/contribute'
-                      '?obligation=${obligation.id}'
-                      '&amount=${obligation.outstanding.minor}',
-                    ),
-            child: const Text('Pay now'),
+                const SizedBox(height: 3),
+                Text(
+                  'Nothing is due right now. Your next contribution will appear here '
+                  'when a programme schedules it.',
+                  style: context.text.bodySmall?.copyWith(
+                    color: c.textSoft,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -171,46 +225,137 @@ class _ObligationTile extends StatelessWidget {
   }
 }
 
-class _HistoryRow extends StatelessWidget {
-  const _HistoryRow({required this.contribution});
+/// One amount owed.
+///
+/// The figure dominates, the due date sits directly beneath it because the two
+/// are read together, and the action repeats the amount so there is no doubt
+/// what is about to be paid.
+class _ObligationCard extends StatelessWidget {
+  const _ObligationCard({required this.obligation});
 
-  final Contribution contribution;
+  final Obligation obligation;
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.kolo;
-    return Row(
-      children: [
-        Icon(
-          contribution.isConfirmed ? Icons.check_circle_rounded : Icons.hourglass_bottom_rounded,
-          size: 18,
-          color: contribution.isConfirmed ? palette.success : palette.textFaint,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
+    final c = context.colors;
+    final overdue = obligation.isOverdue;
+    final partiallyPaid = obligation.paid.minor > 0 && obligation.outstanding.minor > 0;
+    final tone = overdue ? c.failed : c.text;
+
+    return KoloCard(
+      border: overdue ? c.failed.withValues(alpha: 0.3) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(contribution.programmeName, style: Theme.of(context).textTheme.bodyMedium),
-              Text(
-                contribution.reference.isEmpty ? humanise(contribution.status) : contribution.reference,
-                style: Theme.of(context).textTheme.bodySmall,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      obligation.programmeName.isEmpty
+                          ? 'Contribution'
+                          : obligation.programmeName,
+                      style: context.text.bodySmall?.copyWith(color: c.textSoft),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: KoloSpace.sm),
+                    KoloAmount(
+                      money: obligation.outstanding,
+                      size: 26,
+                      color: tone,
+                    ),
+                    const SizedBox(height: KoloSpace.sm),
+                    Row(
+                      children: [
+                        Icon(
+                          overdue
+                              ? Icons.warning_amber_rounded
+                              : Icons.event_outlined,
+                          size: 13,
+                          color: overdue ? c.failed : c.textSoft,
+                        ),
+                        const SizedBox(width: KoloSpace.xs + 1),
+                        Flexible(
+                          child: Text(
+                            _dueLine(obligation),
+                            style: context.text.bodySmall?.copyWith(
+                              color: overdue ? c.failed : c.textSoft,
+                              fontWeight: overdue ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: KoloSpace.md),
+              // "Pending" beside "Due in 3 days" says the same thing twice. The
+              // pill is reserved for a state the date cannot express.
+              if (obligation.status == 'processing' ||
+                  obligation.status == 'awaiting_payment')
+                KoloStatusPill(status: obligation.status, compact: true),
             ],
           ),
-        ),
-        const SizedBox(width: 8),
-        Text(contribution.amount.format(), style: KoloTheme.moneySmall(palette.text)),
-      ],
+          if (partiallyPaid) ...[
+            const SizedBox(height: KoloSpace.md),
+            // Progress on a part-paid obligation, with the numbers stated. A bar
+            // alone would ask the member to do arithmetic.
+            KoloProgress(
+              value: obligation.amount.minor == 0
+                  ? 0
+                  : obligation.paid.minor / obligation.amount.minor,
+              color: c.text,
+              height: 4,
+              semanticLabel: 'Part paid',
+            ),
+            const SizedBox(height: KoloSpace.sm),
+            Text(
+              '${obligation.paid.format()} of ${obligation.amount.format()} paid',
+              style: context.text.bodySmall,
+            ),
+          ],
+          const SizedBox(height: KoloSpace.lg),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: FilledButton(
+              onPressed: obligation.programmeId.isEmpty
+                  ? null
+                  : () => context.push(
+                        '/programmes/${obligation.programmeId}/contribute'
+                        '?obligation=${obligation.id}'
+                        '&amount=${obligation.outstanding.minor}',
+                      ),
+              child: Text('Pay ${obligation.outstanding.format()}'),
+            ),
+          ),
+        ],
+      ),
     );
   }
-}
 
-String _formatDate(DateTime? value) {
-  if (value == null) return 'no date set';
-  const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-  return '${value.day} ${months[value.month - 1]}';
+  /// Due dates are relative where that is more useful than a calendar date:
+  /// "due in 3 days" is actionable, "due 8 Nov" needs a mental calculation.
+  static String _dueLine(Obligation obligation) {
+    final due = obligation.dueDate;
+    if (due == null) return 'No due date set';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(due.year, due.month, due.day);
+    final days = target.difference(today).inDays;
+
+    if (days < 0) {
+      final late = -days;
+      return late == 1 ? 'Overdue by a day' : 'Overdue by $late days';
+    }
+    if (days == 0) return 'Due today';
+    if (days == 1) return 'Due tomorrow';
+    if (days <= 7) return 'Due in $days days';
+    return 'Due ${DateFormat('d MMM').format(due)}';
+  }
 }

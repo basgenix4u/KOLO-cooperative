@@ -121,21 +121,32 @@ class KoloAmount extends StatelessWidget {
         fit: BoxFit.scaleDown,
         alignment: Alignment.centerLeft,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          // One baseline for all three parts. The currency mark and the kobo are
+          // smaller, not higher: they sit on the same line as the figures they
+          // belong to, which is what makes the group read as one number.
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
           mainAxisSize: MainAxisSize.min,
           children: [
             if (showCurrency)
-              Padding(
-                padding: EdgeInsets.only(top: size * 0.16, right: 3),
-                child: Text(symbol, style: KoloType.currencyMark(c, size: size, color: tone.withValues(alpha: 0.55))),
+              Text(
+                symbol,
+                style: KoloType.currencyMark(
+                  c,
+                  size: size,
+                  color: tone.withValues(alpha: 0.72),
+                ),
               ),
+            if (showCurrency) SizedBox(width: size * 0.09),
             Text(whole, style: KoloType.money(c, size: size, weight: weight, color: tone)),
             if (money.decimalPlaces > 0)
-              Padding(
-                padding: EdgeInsets.only(top: size * 0.10, left: 2),
-                child: Text(
-                  '.${(money.minor.abs() % 100).toString().padLeft(2, '0')}',
-                  style: KoloType.money(c, size: size * 0.42, weight: FontWeight.w600, color: tone.withValues(alpha: 0.5)),
+              Text(
+                '.${(money.minor.abs() % 100).toString().padLeft(2, '0')}',
+                style: KoloType.money(
+                  c,
+                  size: size * 0.45,
+                  weight: FontWeight.w600,
+                  color: tone.withValues(alpha: 0.5),
                 ),
               ),
           ],
@@ -352,6 +363,11 @@ class KoloActivityRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+
+    // A ledger row, not a list row: what it was and its identifier on the left,
+    // the amount and its state on the right. Squeezing a status pill, a date and
+    // a reference into one 12px line truncated all three and made a payment
+    // reference — the one thing an officer searches for — unreadable.
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: KoloSpace.md),
       child: Row(
@@ -364,7 +380,7 @@ class KoloActivityRow extends StatelessWidget {
               color: c.surfaceSunken,
               borderRadius: BorderRadius.circular(KoloRadius.sm + 2),
             ),
-            child: Icon(icon ?? Icons.swap_horiz_rounded, size: 18, color: c.textSoft),
+            child: Icon(icon ?? Icons.swap_horiz_rounded, size: 17, color: c.textSoft),
           ),
           const SizedBox(width: KoloSpace.md),
           Expanded(
@@ -377,31 +393,29 @@ class KoloActivityRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (subtitle != null || status != null) ...[
+                if (subtitle != null) ...[
                   const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      if (status != null) ...[
-                        KoloStatusPill(status: status!, compact: true),
-                        const SizedBox(width: KoloSpace.sm),
-                      ],
-                      if (subtitle != null)
-                        Expanded(
-                          child: Text(
-                            subtitle!,
-                            style: context.text.bodySmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
+                  Text(
+                    subtitle!,
+                    style: context.text.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ],
             ),
           ),
           const SizedBox(width: KoloSpace.sm),
-          KoloAmountSmall(money: amount, color: amountColor),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              KoloAmountSmall(money: amount, color: amountColor),
+              if (status != null) ...[
+                const SizedBox(height: 4),
+                KoloStatusPill(status: status!, compact: true),
+              ],
+            ],
+          ),
         ],
       ),
     );
@@ -419,7 +433,6 @@ class KoloActivityRow extends StatelessWidget {
   }
 }
 
-/// A thin progress track. Used for contribution progress and savings targets.
 class KoloProgress extends StatelessWidget {
   const KoloProgress({
     super.key,
@@ -695,6 +708,64 @@ class KoloErrorState extends StatelessWidget {
                 label: const Text('Try again'),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A primary action that reports its own progress.
+///
+/// The button is the thing that was tapped, so the button is where the busy
+/// state belongs. A spinner elsewhere on screen makes the member wonder whether
+/// the tap registered.
+class KoloSubmitButton extends StatelessWidget {
+  const KoloSubmitButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.busy = false,
+    this.busyLabel,
+    this.icon,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool busy;
+  final String? busyLabel;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return SizedBox(
+      height: 54,
+      child: FilledButton(
+        onPressed: busy ? null : onPressed,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (busy)
+              SizedBox(
+                width: 17,
+                height: 17,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(c.accentText),
+                ),
+              )
+            else if (icon != null)
+              Icon(icon, size: 18),
+            if (busy || icon != null) const SizedBox(width: KoloSpace.sm + 2),
+            Flexible(
+              child: Text(
+                busy ? (busyLabel ?? label) : label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+              ),
+            ),
           ],
         ),
       ),

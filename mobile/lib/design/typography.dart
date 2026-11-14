@@ -113,8 +113,10 @@ class KoloType {
   static TextStyle currencyMark(KoloColors colors, {double size = 16, Color? color}) =>
       TextStyle(
         fontFamily: family,
-        fontSize: size * 0.62,
-        fontWeight: FontWeight.w600,
+        // 0.72, not 0.62. The naira sign carries two strokes through a barred N;
+        // at 62% it collapses into a smudge beside a large figure.
+        fontSize: size * 0.72,
+        fontWeight: FontWeight.w700,
         color: color ?? colors.textSoft,
         height: 1.0,
         fontFeatures: const [FontFeature.tabularFigures()],

@@ -159,6 +159,57 @@ final _detailGroup = GroupSummary(
   requiresApproval: true,
 );
 
+final _moneyObligations = [
+  Obligation(
+    id: 'obl_1',
+    programmeId: 'prg_1',
+    programmeName: 'Monthly rotation',
+    dueDate: DateTime.now().add(const Duration(days: 3)),
+    amount: const Money(5000000, 'NGN'),
+    paid: const Money(0, 'NGN'),
+    outstanding: const Money(5000000, 'NGN'),
+    status: 'pending',
+  ),
+  Obligation(
+    id: 'obl_2',
+    programmeId: 'prg_2',
+    programmeName: 'School fees fund',
+    dueDate: DateTime.now().subtract(const Duration(days: 6)),
+    amount: const Money(8000000, 'NGN'),
+    paid: const Money(3000000, 'NGN'),
+    outstanding: const Money(5000000, 'NGN'),
+    status: 'overdue',
+  ),
+  Obligation(
+    id: 'obl_3',
+    programmeId: 'prg_3',
+    programmeName: 'Emergency fund',
+    dueDate: DateTime.now().add(const Duration(days: 21)),
+    amount: const Money(2000000, 'NGN'),
+    paid: const Money(500000, 'NGN'),
+    outstanding: const Money(1500000, 'NGN'),
+    status: 'pending',
+  ),
+];
+
+final _moneyHistory = [
+  Contribution(
+    id: 'c1', reference: 'KOLO-7F3A21', programmeName: 'Monthly rotation',
+    amount: const Money(5000000, 'NGN'), status: 'confirmed',
+    createdAt: DateTime.now().subtract(const Duration(days: 30)),
+  ),
+  Contribution(
+    id: 'c2', reference: 'KOLO-9B12C4', programmeName: 'School fees fund',
+    amount: const Money(3000000, 'NGN'), status: 'confirmed',
+    createdAt: DateTime.now().subtract(const Duration(days: 12)),
+  ),
+  Contribution(
+    id: 'c3', reference: 'KOLO-2D88E0', programmeName: 'Monthly rotation',
+    amount: const Money(5000000, 'NGN'), status: 'processing',
+    createdAt: DateTime.now().subtract(const Duration(days: 2)),
+  ),
+];
+
 Widget _app({required ThemeMode mode, required bool signedIn}) {
   return ProviderScope(
     overrides: [
@@ -173,6 +224,10 @@ Widget _app({required ThemeMode mode, required bool signedIn}) {
       groupProvider('berkley-square-ajo').overrideWith((ref) async => _detailGroup),
       groupProgrammesProvider('berkley-square-ajo')
           .overrideWith((ref) async => [_programme]),
+      programmeProvider('prg_1').overrideWith((ref) async => _programme),
+      // The contribute route stacks on top of programme detail, which fetches
+      // cycles on build. Without this it opens a real socket and leaves a timer.
+      programmeCyclesProvider('prg_1').overrideWith((ref) async => <RotationCycle>[]),
       themeModeProvider.overrideWith(() => _ForcedMode(mode)),
     ],
     child: const KoloApp(),
@@ -250,6 +305,23 @@ void main() {
   testWidgets('login dark', (t) async {
     await _shoot(t, '08_login_dark', mode: ThemeMode.dark, signedIn: false,
         route: '/login');
+  });
+  testWidgets('contribute light', (t) async {
+    await _shoot(t, '14_contribute', mode: ThemeMode.light, signedIn: true,
+        route: '/programmes/prg_1/contribute?obligation=obl_1&amount=5000000');
+  });
+  testWidgets('contribute small screen', (t) async {
+    await _shoot(t, '15_contribute_small', mode: ThemeMode.light, signedIn: true,
+        size: const Size(320, 640), dpr: 2,
+        route: '/programmes/prg_1/contribute?obligation=obl_1&amount=5000000');
+  });
+  testWidgets('money light', (t) async {
+    await _shoot(t, '12_money', mode: ThemeMode.light, signedIn: true,
+        route: '/money');
+  });
+  testWidgets('money dark', (t) async {
+    await _shoot(t, '13_money_dark', mode: ThemeMode.dark, signedIn: true,
+        route: '/money');
   });
   testWidgets('group detail light', (t) async {
     await _shoot(t, '10_group_detail', mode: ThemeMode.light, signedIn: true,

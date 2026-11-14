@@ -214,64 +214,6 @@ class KoloField extends StatelessWidget {
   }
 }
 
-/// A primary action that reports its own progress.
-///
-/// The button is the thing that was tapped, so the button is where the busy
-/// state belongs. A spinner elsewhere on screen makes the member wonder whether
-/// the tap registered.
-class KoloSubmitButton extends StatelessWidget {
-  const KoloSubmitButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.busy = false,
-    this.busyLabel,
-    this.icon,
-  });
-
-  final String label;
-  final VoidCallback? onPressed;
-  final bool busy;
-  final String? busyLabel;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return SizedBox(
-      height: 54,
-      child: FilledButton(
-        onPressed: busy ? null : onPressed,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (busy)
-              SizedBox(
-                width: 17,
-                height: 17,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(c.accentText),
-                ),
-              )
-            else if (icon != null)
-              Icon(icon, size: 18),
-            if (busy || icon != null) const SizedBox(width: KoloSpace.sm + 2),
-            Flexible(
-              child: Text(
-                busy ? (busyLabel ?? label) : label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Error text that reads as a sentence, not a code.
 class AuthError extends StatelessWidget {
   const AuthError({super.key, required this.message});
