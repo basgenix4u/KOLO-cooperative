@@ -344,7 +344,7 @@ class _PositionCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(KoloSpace.xl),
         decoration: BoxDecoration(
-          color: c.isDark ? c.surface : const Color(0xFF101820),
+          color: const Color(0xFF101820),
           borderRadius: BorderRadius.circular(KoloRadius.xl),
         ),
         child: Column(
@@ -506,10 +506,10 @@ class _ObligationCard extends StatelessWidget {
         // full citrus field at night is a glare.
         color: urgent
             ? c.failedWash
-            : (c.isDark ? c.surfaceRaised : c.accentWash),
+            : c.accentWash,
         border: urgent
             ? c.failed.withValues(alpha: 0.28)
-            : c.accent.withValues(alpha: c.isDark ? 0.42 : 0.55),
+            : c.accent.withValues(alpha: 0.55),
         padding: const EdgeInsets.all(KoloSpace.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

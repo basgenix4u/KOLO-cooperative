@@ -47,30 +47,31 @@ class KoloType {
         );
 
     return TextTheme(
-      // Display: reserved for the one number a screen is about.
-      displayLarge: s(size: 44, weight: FontWeight.w700, color: colors.text, height: 1.05, tracking: -1.4),
-      displayMedium: s(size: 36, weight: FontWeight.w700, color: colors.text, height: 1.08, tracking: -1.0),
-      displaySmall: s(size: 30, weight: FontWeight.w700, color: colors.text, height: 1.12, tracking: -0.7),
+      // The scale below is generated from the design system's CSS, step for step:
+      // a size here that is not in design/m.css is a size the design never drew.
+      displayLarge: s(size: 40, weight: FontWeight.w700, color: colors.text, height: 1.0, tracking: -1.28),
+      displayMedium: s(size: 32, weight: FontWeight.w700, color: colors.text, height: 1.08, tracking: -1.02),
+      displaySmall: s(size: 30, weight: FontWeight.w700, color: colors.text, height: 1.05, tracking: -0.9),
 
       // Headlines: screen titles.
-      headlineLarge: s(size: 26, weight: FontWeight.w700, color: colors.text, height: 1.2, tracking: -0.5),
-      headlineMedium: s(size: 22, weight: FontWeight.w700, color: colors.text, height: 1.22, tracking: -0.35),
-      headlineSmall: s(size: 19, weight: FontWeight.w600, color: colors.text, height: 1.25, tracking: -0.2),
+      headlineLarge: s(size: 24, weight: FontWeight.w700, color: colors.text, height: 1.15, tracking: -0.6),
+      headlineMedium: s(size: 22, weight: FontWeight.w700, color: colors.text, height: 1.2, tracking: -0.53),
+      headlineSmall: s(size: 19, weight: FontWeight.w700, color: colors.text, height: 1.2, tracking: -0.38),
 
       // Titles: card and section headers.
-      titleLarge: s(size: 17, weight: FontWeight.w600, color: colors.text, height: 1.3, tracking: -0.1),
-      titleMedium: s(size: 15, weight: FontWeight.w600, color: colors.text, height: 1.35),
-      titleSmall: s(size: 13.5, weight: FontWeight.w600, color: colors.text, height: 1.35),
+      titleLarge: s(size: 15.5, weight: FontWeight.w600, color: colors.text, height: 1.3, tracking: -0.19),
+      titleMedium: s(size: 14.5, weight: FontWeight.w600, color: colors.text, height: 1.3, tracking: -0.12),
+      titleSmall: s(size: 14, weight: FontWeight.w600, color: colors.text, height: 1.3, tracking: -0.11),
 
       // Body: the reading scale.
-      bodyLarge: s(size: 15.5, weight: FontWeight.w400, color: colors.text, height: 1.5),
-      bodyMedium: s(size: 14, weight: FontWeight.w400, color: colors.text, height: 1.5),
-      bodySmall: s(size: 12.5, weight: FontWeight.w400, color: colors.textSoft, height: 1.45),
+      bodyLarge: s(size: 14.5, weight: FontWeight.w400, color: colors.text, height: 1.5),
+      bodyMedium: s(size: 13, weight: FontWeight.w400, color: colors.text, height: 1.45),
+      bodySmall: s(size: 11.5, weight: FontWeight.w400, color: colors.textFaint, height: 1.45),
 
       // Labels: buttons, chips, tab text.
-      labelLarge: s(size: 14.5, weight: FontWeight.w600, color: colors.text, height: 1.2),
-      labelMedium: s(size: 12.5, weight: FontWeight.w600, color: colors.text, height: 1.2, tracking: 0.1),
-      labelSmall: s(size: 11, weight: FontWeight.w600, color: colors.textSoft, height: 1.2, tracking: 0.3),
+      labelLarge: s(size: 15, weight: FontWeight.w600, color: colors.text, height: 1.2, tracking: -0.12),
+      labelMedium: s(size: 13, weight: FontWeight.w600, color: colors.text, height: 1.2),
+      labelSmall: s(size: 11.5, weight: FontWeight.w600, color: colors.textSoft, height: 1.2, tracking: 0.06),
     );
   }
 
@@ -83,7 +84,7 @@ class KoloType {
         fontSize: 10.5,
         fontWeight: FontWeight.w700,
         color: colors.textFaint,
-        letterSpacing: 1.1,
+        letterSpacing: 1.365,
         height: 1.2,
       );
 
@@ -103,8 +104,8 @@ class KoloType {
         fontSize: size,
         fontWeight: weight,
         color: color ?? colors.text,
-        height: 1.15,
-        letterSpacing: size >= 28 ? -1.2 : (size >= 20 ? -0.5 : -0.1),
+        height: size >= 28 ? 1.0 : 1.15,
+        letterSpacing: size >= 28 ? 0 : (size >= 20 ? -0.53 : -0.29),
         fontFeatures: const [FontFeature.tabularFigures()],
       );
 

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../design/navigation.dart';
 import '../../../design/tokens.dart';
 import '../../../design/typography.dart';
-import '../../../core/theme/theme_mode.dart';
 
 /// The first screen a new member sees.
 ///
@@ -16,13 +14,11 @@ import '../../../core/theme/theme_mode.dart';
 ///
 /// The Midnight Ink field is the brand's authority. Citrus appears exactly once,
 /// on the primary action, so the eye has one place to land.
-class WelcomeScreen extends ConsumerWidget {
+class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
-
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: KoloBrand.ink,
       body: SafeArea(
@@ -150,26 +146,6 @@ class WelcomeScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-
-                      Center(
-                        child: TextButton.icon(
-                          onPressed: () => _cycleTheme(context, ref, themeMode),
-                          icon: Icon(
-                            _themeIcon(themeMode),
-                            size: 15,
-                            color: Colors.white.withValues(alpha: 0.55),
-                          ),
-                          label: Text(
-                            themeModeNextLabel(themeMode),
-                            style: TextStyle(
-                              fontFamily: KoloType.family,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white.withValues(alpha: 0.55),
-                            ),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -180,27 +156,6 @@ class WelcomeScreen extends ConsumerWidget {
       ),
     );
   }
-
-  /// The welcome screen is deliberately always ink, so the appearance toggle
-  /// here sets the *signed-in* appearance rather than changing this screen.
-  static Future<void> _cycleTheme(
-    BuildContext context,
-    WidgetRef ref,
-    ThemeMode current,
-  ) async {
-    final next = switch (current) {
-      ThemeMode.system => ThemeMode.light,
-      ThemeMode.light => ThemeMode.dark,
-      ThemeMode.dark => ThemeMode.system,
-    };
-    await ref.read(themeModeProvider.notifier).set(next);
-  }
-
-  static IconData _themeIcon(ThemeMode mode) => switch (mode) {
-        ThemeMode.system => Icons.brightness_auto_rounded,
-        ThemeMode.light => Icons.light_mode_rounded,
-        ThemeMode.dark => Icons.dark_mode_rounded,
-      };
 
   static TextStyle _display(BuildContext context, bool compact) => TextStyle(
         fontFamily: KoloType.family,

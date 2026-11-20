@@ -9,7 +9,6 @@ import '../../design/tokens.dart';
 import '../../design/typography.dart';
 import '../auth/auth_controller.dart';
 import '../savings/savings_providers.dart';
-import '../../core/theme/theme_mode.dart';
 
 
 /// The account tab.
@@ -123,12 +122,6 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                   _ => const SizedBox.shrink(),
                 },
-              ),
-
-              const SizedBox(height: KoloSpace.section),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: KoloSpace.page),
-                child: _AppearanceSection(),
               ),
 
               const SizedBox(height: KoloSpace.section),
@@ -348,83 +341,6 @@ class _Check extends StatelessWidget {
             color: ok ? c.settled : c.textFaint,
             fontWeight: FontWeight.w600,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AppearanceSection extends ConsumerWidget {
-  const _AppearanceSection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.colors;
-    final mode = ref.watch(themeModeProvider);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: KoloSpace.md),
-          child: Text('Appearance', style: context.text.titleLarge),
-        ),
-        // Segmented rather than a cycling button: three options deserve three
-        // targets, and the current one should be visible without tapping.
-        Container(
-          padding: const EdgeInsets.all(KoloSpace.xs),
-          decoration: BoxDecoration(
-            color: c.surfaceSunken,
-            borderRadius: BorderRadius.circular(KoloRadius.md),
-          ),
-          child: Row(
-            children: [
-              for (final option in const [
-                (ThemeMode.system, 'System', Icons.brightness_auto_rounded),
-                (ThemeMode.light, 'Light', Icons.light_mode_rounded),
-                (ThemeMode.dark, 'Dark', Icons.dark_mode_rounded),
-              ])
-                Expanded(
-                  child: Semantics(
-                    selected: mode == option.$1,
-                    button: true,
-                    child: InkWell(
-                      onTap: () => ref.read(themeModeProvider.notifier).set(option.$1),
-                      borderRadius: BorderRadius.circular(KoloRadius.sm),
-                      child: AnimatedContainer(
-                        duration: KoloMotion.fast,
-                        padding: const EdgeInsets.symmetric(vertical: KoloSpace.sm + 2),
-                        decoration: BoxDecoration(
-                          color: mode == option.$1 ? c.surfaceRaised : Colors.transparent,
-                          borderRadius: BorderRadius.circular(KoloRadius.sm),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              option.$3,
-                              size: 17,
-                              color: mode == option.$1 ? c.text : c.textSoft,
-                            ),
-                            const SizedBox(height: KoloSpace.xs),
-                            Text(
-                              option.$2,
-                              style: context.text.labelSmall?.copyWith(
-                                color: mode == option.$1 ? c.text : c.textSoft,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: KoloSpace.sm),
-        Text(
-          themeModeLabel(mode),
-          style: context.text.bodySmall?.copyWith(color: c.textFaint),
         ),
       ],
     );

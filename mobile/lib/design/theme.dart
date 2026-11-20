@@ -14,7 +14,6 @@ class KoloTheme {
 
   static ThemeData light() => _build(KoloColors.light, Brightness.light);
 
-  static ThemeData dark() => _build(KoloColors.dark, Brightness.dark);
 
   static ThemeData _build(KoloColors c, Brightness brightness) {
     final base = ThemeData(
@@ -235,10 +234,10 @@ class KoloTheme {
       ),
 
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: c.isDark ? c.surfaceRaised : KoloBrand.ink,
+        backgroundColor: KoloBrand.ink,
         contentTextStyle: TextStyle(
           fontFamily: KoloType.family,
-          color: c.isDark ? c.text : Colors.white,
+          color: Colors.white,
           fontSize: 14,
           height: 1.4,
         ),

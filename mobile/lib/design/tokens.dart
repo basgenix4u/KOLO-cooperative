@@ -60,11 +60,11 @@ class KoloBrand {
   static const Color failedWash = Color(0xFFF8E7E5);
 }
 
-/// The resolved palette for one brightness.
+/// The resolved palette for the one theme.
 ///
-/// Screens read `context.colors` and never branch on `isDark` themselves: the
-/// same widget tree renders correctly in both appearances, which is what stops
-/// dark mode becoming a light theme with the background flipped.
+/// Screens read `context.colors`. There is no second palette and no appearance
+/// switch: the design system has a single light theme, so a screen cannot drift
+/// into an appearance the design never specified.
 @immutable
 class KoloColors extends ThemeExtension<KoloColors> {
   const KoloColors({
@@ -134,7 +134,6 @@ class KoloColors extends ThemeExtension<KoloColors> {
   /// Behind modal sheets.
   final Color scrim;
 
-  bool get isDark => ground.computeLuminance() < 0.2;
 
   static const KoloColors light = KoloColors(
     ground: KoloBrand.stone,

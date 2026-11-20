@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import 'core/deeplink/deep_links.dart';
 import 'core/models/models.dart';
-import 'core/theme/theme_mode.dart';
 import 'design/shell.dart';
 import 'design/theme.dart';
 import 'features/auth/auth_controller.dart';
@@ -223,14 +222,11 @@ class _KoloAppState extends ConsumerState<KoloApp> {
       }
     });
 
-    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'KOLO',
       debugShowCheckedModeBanner: false,
       theme: KoloTheme.light(),
-      darkTheme: KoloTheme.dark(),
-      themeMode: themeMode,
       routerConfig: _router,
     );
   }
