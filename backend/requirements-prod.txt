@@ -1,0 +1,16 @@
+Django==5.2.19
+djangorestframework
+djangorestframework-simplejwt
+drf-spectacular
+django-cors-headers
+whitenoise
+django-environ
+psycopg[binary]
+redis
+django-redis
+channels==4.3.2
+channels-redis
+daphne==4.2.3
+celery
+requests
+Pillow
