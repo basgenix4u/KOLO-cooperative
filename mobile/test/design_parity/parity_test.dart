@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kolo/design/navigation.dart';
 import 'package:kolo/design/theme.dart';
 import 'package:kolo/design/tokens.dart';
+import 'package:kolo/features/auth/screens/welcome_screen.dart';
+import 'package:kolo/features/auth/screens/login_screen.dart';
 import 'package:kolo/features/chat/screens/messages_screen.dart';
 
 import 'fixtures.dart';
@@ -62,6 +64,22 @@ Future<void> renderWithTabBar(
 }
 
 void main() {
+  testWidgets('SCR-002 welcome', (tester) async {
+    await renderScreen(tester, const WelcomeScreen());
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/scr-002-welcome.png'),
+    );
+  });
+
+  testWidgets('SCR-009 sign in', (tester) async {
+    await renderScreen(tester, const LoginScreen());
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/scr-009-sign-in.png'),
+    );
+  });
+
   testWidgets('SCR-075 conversations', (tester) async {
     await renderWithTabBar(
       tester,

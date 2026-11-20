@@ -45,37 +45,22 @@ class AuthScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Scaffold(
-      backgroundColor: c.surface,
-      // Resizes so the pinned action rides above the keyboard instead of being
-      // hidden behind it.
+      backgroundColor: c.ground,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
+        bottom: false,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                KoloSpace.page, KoloSpace.sm, KoloSpace.page, 0),
-              child: Row(
-                children: [
-                  if (showBack)
-                    KoloBackButton(
-                      onTap: onBack ?? () => context.canPop() ? context.pop() : context.go('/welcome'),
-                    )
-                  else
-                    const SizedBox(height: 44),
-                  const Spacer(),
-                  const KoloMark(size: 22),
-                ],
-              ),
-            ),
+            const KoloStatusBar(),
             Expanded(
               child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.fromLTRB(
                   KoloSpace.page,
-                  KoloSpace.xl,
+                  10,
                   KoloSpace.page,
-                  // Clear the home indicator plus a little breathing room.
-                  KoloSpace.page + MediaQuery.paddingOf(context).bottom,
+                  24 + MediaQuery.paddingOf(context).bottom,
                 ),
                 child: Center(
                   child: ConstrainedBox(
@@ -83,41 +68,91 @@ class AuthScaffold extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Row(
+                          children: [
+                            if (showBack)
+                              KoloBackButton(
+                                onTap: onBack ??
+                                    () => context.canPop()
+                                        ? context.pop()
+                                        : context.go('/welcome'),
+                              )
+                            else
+                              const _Wordmark(),
+                            const Spacer(),
+                          ],
+                        ),
+                        const SizedBox(height: 30),
                         Text(
                           title,
-                          style: Theme.of(context).textTheme.displaySmall,
+                          style: TextStyle(
+                            fontFamily: KoloType.family,
+                            fontSize: 28,
+                            height: 1.15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.7,
+                            color: c.text,
+                          ),
                         ),
-                        const SizedBox(height: KoloSpace.sm + 2),
+                        const SizedBox(height: 6),
                         Text(
                           subtitle,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: c.textSoft, height: 1.5),
+                          style: TextStyle(
+                            fontFamily: KoloType.family,
+                            fontSize: 13,
+                            height: 1.45,
+                            fontWeight: FontWeight.w400,
+                            color: c.textSoft,
+                          ),
                         ),
+                        const SizedBox(height: 26),
                         if (notice != null) ...[
-                          const SizedBox(height: KoloSpace.lg),
                           notice!,
+                          const SizedBox(height: 18),
                         ],
                         if (error != null) ...[
-                          const SizedBox(height: KoloSpace.lg),
                           error!,
+                          const SizedBox(height: 18),
                         ],
-                        const SizedBox(height: KoloSpace.xl + 4),
                         ...children,
-                        if (footer != null) ...[
-                          const SizedBox(height: KoloSpace.xxl),
-                          footer!,
-                        ],
                       ],
                     ),
                   ),
                 ),
               ),
             ),
+            if (footer != null) footer!,
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The mark and wordmark, as the design draws it at the top of a signed-out
+/// screen. The tracking is the identity: KOLO at 0.16em is a logo.
+class _Wordmark extends StatelessWidget {
+  const _Wordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        KoloMark(size: 15, color: c.text, semanticLabel: 'KOLO'),
+        const SizedBox(width: 10),
+        Text(
+          'KOLO',
+          style: TextStyle(
+            fontFamily: KoloType.family,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 2.4,
+            color: c.text,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -145,6 +180,9 @@ class KoloField extends StatelessWidget {
     this.maxLines = 1,
     this.textCapitalization = TextCapitalization.none,
     this.autofocus = false,
+    this.height = 56,
+    this.fontSize = 15,
+    this.fontWeight = FontWeight.w500,
   });
 
   final String label;
@@ -164,52 +202,99 @@ class KoloField extends StatelessWidget {
   final int maxLines;
   final TextCapitalization textCapitalization;
   final bool autofocus;
+  final double height;
+  final double fontSize;
+  final FontWeight fontWeight;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: KoloType.eyebrow(c).copyWith(color: c.textSoft),
-        ),
-        const SizedBox(height: KoloSpace.sm),
-        TextFormField(
-          controller: controller,
-          obscureText: obscure,
-          keyboardType: keyboard,
-          textInputAction: action,
-          textCapitalization: textCapitalization,
-          validator: validator,
-          onChanged: onChanged,
-          onFieldSubmitted: (_) => onSubmitted?.call(),
-          autofillHints: autofillHints,
-          enabled: enabled,
-          maxLines: maxLines,
-          autofocus: autofocus,
-          style: TextStyle(
-            fontFamily: KoloType.family,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: enabled ? c.text : c.textFaint,
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            helperText: helper,
-            helperMaxLines: 2,
-            prefixIcon: prefix,
-            suffixIcon: suffix,
-            // A tall field is a finger-friendly field. Material's default is
-            // 48dp; 56 gives a comfortable target without looking inflated.
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: KoloSpace.lg,
-              vertical: KoloSpace.lg + 2,
+    final radius = BorderRadius.circular(KoloRadius.md);
+
+    OutlineInputBorder border(Color colour, double width) => OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: colour, width: width),
+        );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: KoloType.family,
+              fontSize: 12.5,
+              height: 1.45,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.06,
+              color: c.textSoft,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 7),
+          TextFormField(
+            controller: controller,
+            obscureText: obscure,
+            keyboardType: keyboard,
+            textInputAction: action,
+            textCapitalization: textCapitalization,
+            validator: validator,
+            onChanged: onChanged,
+            onFieldSubmitted: (_) => onSubmitted?.call(),
+            autofillHints: autofillHints,
+            enabled: enabled,
+            maxLines: maxLines,
+            autofocus: autofocus,
+            cursorColor: c.accentText,
+            style: TextStyle(
+              fontFamily: KoloType.family,
+              fontSize: fontSize,
+              fontWeight: fontWeight,
+              color: enabled ? c.text : c.textFaint,
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              filled: true,
+              fillColor: c.surfaceRaised,
+              hintText: hint,
+              hintStyle: TextStyle(
+                fontFamily: KoloType.family,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w400,
+                color: c.textFaint,
+              ),
+              helperText: helper,
+              helperMaxLines: 2,
+              helperStyle: TextStyle(
+                fontFamily: KoloType.family,
+                fontSize: 11.5,
+                height: 1.45,
+                color: c.textFaint,
+              ),
+              prefixIcon: prefix,
+              suffixIcon: suffix,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 15,
+                vertical: height / 2 - fontSize * 0.72,
+              ),
+              constraints: BoxConstraints(minHeight: height),
+              floatingLabelBehavior: FloatingLabelBehavior.never,
+              border: border(c.hairline, 1.5),
+              enabledBorder: border(c.hairline, 1.5),
+              focusedBorder: border(c.accentText, 1.5),
+              errorBorder: border(c.failed, 1.5),
+              focusedErrorBorder: border(c.failed, 1.5),
+              errorStyle: TextStyle(
+                fontFamily: KoloType.family,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: c.failed,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

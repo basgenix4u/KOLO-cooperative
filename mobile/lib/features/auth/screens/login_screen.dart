@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../design/components.dart';
 import '../../../design/tokens.dart';
+import '../../../design/typography.dart';
 import '../auth_controller.dart';
 import 'auth_scaffold.dart';
 
@@ -21,6 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   final _passwordFocus = FocusNode();
   bool _obscure = true;
+  bool _remember = true;
   bool _busy = false;
   String? _error;
 
@@ -78,7 +80,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final c = context.colors;
     return AuthScaffold(
       title: 'Welcome back',
-      subtitle: 'Sign in to see your groups, contributions and payouts.',
+      subtitle: 'Sign in to see what your group owes and what is owed to you.',
+      showBack: false,
       error: _error == null ? null : AuthError(message: _error!),
       children: [
         Form(
@@ -87,58 +90,102 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               KoloField(
-                label: 'Email or phone',
+                label: 'Phone number',
                 controller: _identifier,
-                hint: 'you@example.com',
-                keyboard: TextInputType.emailAddress,
+                hint: '803 412 7788',
+                keyboard: TextInputType.phone,
                 action: TextInputAction.next,
-                autofillHints: const [AutofillHints.username, AutofillHints.email],
+                height: 56,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                autofillHints: const [AutofillHints.telephoneNumber],
+                prefix: Padding(
+                  padding: const EdgeInsets.only(left: 15, right: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '+234',
+                        style: TextStyle(
+                          fontFamily: KoloType.family,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: c.textSoft,
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 24,
+                        margin: const EdgeInsets.only(left: 10),
+                        color: c.hairline,
+                      ),
+                    ],
+                  ),
+                ),
                 validator: (value) =>
-                    (value == null || value.trim().isEmpty) ? 'Enter your email or phone' : null,
+                    (value == null || value.trim().isEmpty) ? 'Enter your phone number' : null,
                 onSubmitted: () => _passwordFocus.requestFocus(),
               ),
-              const SizedBox(height: KoloSpace.lg),
               KoloField(
-                label: 'Password',
+                label: 'Passcode',
                 controller: _password,
-                hint: 'Your password',
+                hint: 'Your passcode',
                 obscure: _obscure,
                 action: TextInputAction.done,
+                height: 56,
+                fontSize: 17,
                 autofillHints: const [AutofillHints.password],
                 validator: (value) =>
-                    (value == null || value.isEmpty) ? 'Enter your password' : null,
+                    (value == null || value.isEmpty) ? 'Enter your passcode' : null,
                 onSubmitted: _submit,
                 suffix: IconButton(
                   onPressed: () => setState(() => _obscure = !_obscure),
                   icon: Icon(
                     _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                    size: 19,
+                    size: 18,
                   ),
-                  color: c.textSoft,
-                  tooltip: _obscure ? 'Show password' : 'Hide password',
+                  color: c.textFaint,
+                  tooltip: _obscure ? 'Show passcode' : 'Hide passcode',
                 ),
               ),
-              const SizedBox(height: KoloSpace.md),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _busy
-                      ? null
-                      : () => koloToast(
-                            context,
-                            'Password reset is handled by your group admin for now.',
-                          ),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: KoloSpace.sm,
-                      vertical: KoloSpace.sm,
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  _RememberBox(
+                    checked: _remember,
+                    onTap: () => setState(() => _remember = !_remember),
+                  ),
+                  const SizedBox(width: 9),
+                  Text(
+                    'Remember this phone',
+                    style: TextStyle(
+                      fontFamily: KoloType.family,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: c.text,
                     ),
-                    minimumSize: const Size(0, 40),
                   ),
-                  child: const Text('Forgot your password?'),
-                ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _busy
+                        ? null
+                        : () => koloToast(
+                              context,
+                              'Passcode reset is handled by your group admin for now.',
+                            ),
+                    child: Text(
+                      'Forgot passcode?',
+                      style: TextStyle(
+                        fontFamily: KoloType.family,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: c.accentText,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: KoloSpace.lg),
+              const SizedBox(height: 22),
               KoloSubmitButton(
                 label: 'Sign in',
                 busyLabel: 'Signing in…',
@@ -148,23 +195,117 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ],
           ),
         ),
-      ],
-      footer: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 52,
-            child: OutlinedButton(
-              onPressed: _busy ? null : () => context.go('/register'),
-              child: const Text('Create an account'),
+        const SizedBox(height: 22),
+        Row(
+          children: [
+            Expanded(child: Container(height: 1, color: c.hairline)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                'or',
+                style: TextStyle(
+                  fontFamily: KoloType.family,
+                  fontSize: 11.5,
+                  color: c.textFaint,
+                ),
+              ),
+            ),
+            Expanded(child: Container(height: 1, color: c.hairline)),
+          ],
+        ),
+        const SizedBox(height: 22),
+        SizedBox(
+          height: 54,
+          child: OutlinedButton.icon(
+            onPressed: _busy
+                ? null
+                : () => koloToast(context, 'Fingerprint unlock is not wired in this build.'),
+            icon: Icon(Icons.fingerprint_rounded, size: 20, color: c.text),
+            label: Text(
+              'Use fingerprint',
+              style: TextStyle(
+                fontFamily: KoloType.family,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.13,
+                color: c.text,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: c.surfaceRaised,
+              side: BorderSide(color: c.hairline),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
-          const SizedBox(height: KoloSpace.xl),
-          const KoloNotice(
-            message: 'Sandbox build — no real money moves.',
-            tone: KoloNoticeTone.neutral,
+        ),
+      ],
+      footer: Padding(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Center(
+          child: GestureDetector(
+            onTap: _busy ? null : () => context.go('/register'),
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'New to KOLO? ',
+                    style: TextStyle(
+                      fontFamily: KoloType.family,
+                      fontSize: 13,
+                      color: c.textSoft,
+                    ),
+                  ),
+                  TextSpan(
+                    text: 'Create an account',
+                    style: TextStyle(
+                      fontFamily: KoloType.family,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: c.accentText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The design's own checkbox: a 20 px ink square with a white tick, not
+/// Material's ripple-on-tap box, which draws two nested shapes and reads as
+/// a form control rather than a decision.
+class _RememberBox extends StatelessWidget {
+  const _RememberBox({required this.checked, required this.onTap});
+
+  final bool checked;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      checked: checked,
+      label: 'Remember this phone',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: checked ? c.text : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: checked ? c.text : c.textFaint, width: 1.5),
+          ),
+          child: checked
+              ? Icon(Icons.check_rounded, size: 14, color: c.surfaceRaised)
+              : null,
+        ),
       ),
     );
   }

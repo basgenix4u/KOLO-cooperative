@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kolo/core/api/providers.dart';
@@ -5,6 +6,8 @@ import 'package:kolo/features/savings/savings_providers.dart';
 import 'package:kolo/app.dart';
 import 'package:kolo/core/api/token_store.dart';
 import 'package:kolo/features/auth/auth_controller.dart';
+
+import 'design_parity/fixtures.dart';
 
 /// A token store with no session, so the app's own redirect logic runs for real
 /// instead of being short-circuited by a stub.
@@ -24,9 +27,24 @@ class _EmptyTokenStore extends TokenStore {
 /// Providers that would hit the network are overridden, so this proves the
 /// widget tree builds and routes — not that the backend is reachable, which no
 /// widget test could show.
+/// The product is a phone app: 390 × 844 is the frame every screen is designed
+/// against, so the smoke tests run on it rather than Flutter's 800 × 600 default.
+///
+/// The real Inter faces are loaded for the same reason. Flutter's fallback test
+/// font draws every glyph a full em wide, which wraps sentences into three times
+/// as many lines as the product ever would and makes a correct screen look like
+/// it overflows.
+Future<void> _phone(WidgetTester tester) async {
+  await loadKoloFonts();
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+}
+
 void main() {
   testWidgets('the app builds and lands on the welcome screen when signed out',
       (tester) async {
+    await _phone(tester);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -41,12 +59,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Saved together'), findsOneWidget);
-    expect(find.text('Create your account'), findsOneWidget);
+    expect(find.textContaining('Saved'), findsOneWidget);
+    expect(find.text('Get started'), findsOneWidget);
     expect(find.text('I already have an account'), findsOneWidget);
   });
 
   testWidgets('the welcome screen is honest about being a sandbox', (tester) async {
+    await _phone(tester);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -65,6 +84,7 @@ void main() {
   });
 
   testWidgets('sign-in is reachable from the welcome screen', (tester) async {
+    await _phone(tester);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
