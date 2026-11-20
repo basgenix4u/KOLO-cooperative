@@ -157,9 +157,12 @@ class _Wordmark extends StatelessWidget {
   }
 }
 
-/// A labelled field with the app's own label instead of Material's floating
-/// label. Floating labels slide over the value as it is typed, which is the
-/// opposite of what someone entering a password wants to look at.
+/// A labelled field, drawn as the design draws it.
+///
+/// The label sits above the box and never floats: a label that moves out of the
+/// way is a label the member has to re-find. The box itself is a plain
+/// container so its height is exactly the design's, with none of Material's
+/// reserved helper and counter slots inflating the block.
 class KoloField extends StatelessWidget {
   const KoloField({
     super.key,
@@ -209,13 +212,6 @@ class KoloField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final radius = BorderRadius.circular(KoloRadius.md);
-
-    OutlineInputBorder border(Color colour, double width) => OutlineInputBorder(
-          borderRadius: radius,
-          borderSide: BorderSide(color: colour, width: width),
-        );
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -254,9 +250,9 @@ class KoloField extends StatelessWidget {
               color: enabled ? c.text : c.textFaint,
             ),
             decoration: InputDecoration(
-              isDense: true,
+              isCollapsed: true,
               filled: true,
-              fillColor: c.surfaceRaised,
+              fillColor: enabled ? c.surfaceRaised : c.surfaceSunken,
               hintText: hint,
               hintStyle: TextStyle(
                 fontFamily: KoloType.family,
@@ -265,38 +261,44 @@ class KoloField extends StatelessWidget {
                 color: c.textFaint,
               ),
               helperText: helper,
-              helperMaxLines: 2,
               helperStyle: TextStyle(
                 fontFamily: KoloType.family,
                 fontSize: 11.5,
                 height: 1.45,
                 color: c.textFaint,
               ),
-              prefixIcon: prefix,
-              suffixIcon: suffix,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 15,
-                vertical: height / 2 - fontSize * 0.72,
-              ),
-              constraints: BoxConstraints(minHeight: height),
-              floatingLabelBehavior: FloatingLabelBehavior.never,
-              border: border(c.hairline, 1.5),
-              enabledBorder: border(c.hairline, 1.5),
-              focusedBorder: border(c.accentText, 1.5),
-              errorBorder: border(c.failed, 1.5),
-              focusedErrorBorder: border(c.failed, 1.5),
               errorStyle: TextStyle(
                 fontFamily: KoloType.family,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: c.failed,
               ),
+              prefixIcon: prefix,
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+              suffixIcon: suffix,
+              suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 15,
+                vertical: (height - fontSize * 1.3) / 2,
+              ),
+              constraints: BoxConstraints.tightFor(height: height),
+              isDense: true,
+              border: _border(c.hairline),
+              enabledBorder: _border(c.hairline),
+              focusedBorder: _border(c.accentText),
+              errorBorder: _border(c.failed),
+              focusedErrorBorder: _border(c.failed),
             ),
           ),
         ],
       ),
     );
   }
+
+  OutlineInputBorder _border(Color colour) => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(KoloRadius.md),
+        borderSide: BorderSide(color: colour, width: 1.5),
+      );
 }
 
 /// Error text that reads as a sentence, not a code.

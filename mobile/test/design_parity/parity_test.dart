@@ -7,6 +7,7 @@ import 'package:kolo/design/theme.dart';
 import 'package:kolo/design/tokens.dart';
 import 'package:kolo/features/auth/screens/welcome_screen.dart';
 import 'package:kolo/features/auth/screens/login_screen.dart';
+import 'package:kolo/features/auth/screens/register_screen.dart';
 import 'package:kolo/features/chat/screens/messages_screen.dart';
 
 import 'fixtures.dart';
@@ -77,6 +78,14 @@ void main() {
     await expectLater(
       find.byType(MaterialApp),
       matchesGoldenFile('goldens/scr-009-sign-in.png'),
+    );
+  });
+
+  testWidgets('SCR-006 create your account', (tester) async {
+    await renderScreen(tester, const RegisterScreen());
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/scr-006-register.png'),
     );
   });
 
