@@ -1,0 +1,7 @@
+product-design/
+backend/
+mobile/build/
+mobile/.dart_tool/
+mobile/tool/screenshots/
+.flutter-sdk/
+.pub-cache/
