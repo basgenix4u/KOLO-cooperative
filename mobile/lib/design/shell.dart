@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../design/navigation.dart';
-import '../../design/tokens.dart';
+import '../design/navigation.dart';
+import '../design/tokens.dart';
 
-/// The signed-in frame: four destinations, each keeping its own scroll position.
+/// The signed-in frame: four destinations plus the centre action, each keeping
+/// its own scroll position.
 ///
 /// Implemented as a [StatefulShellRoute] so switching tabs preserves the state of
 /// the tab you left — scrolling a long contributions list, tapping into a group
@@ -15,10 +16,12 @@ class KoloShell extends StatelessWidget {
     super.key,
     required this.navigationShell,
     this.hasAlerts = false,
+    this.unread = 0,
   });
 
   final StatefulNavigationShell navigationShell;
   final bool hasAlerts;
+  final int unread;
 
   @override
   Widget build(BuildContext context) {
@@ -28,9 +31,9 @@ class KoloShell extends StatelessWidget {
       bottomNavigationBar: KoloBottomNav(
         index: navigationShell.currentIndex,
         hasAlerts: hasAlerts,
+        unread: unread,
+        onPay: () => context.push('/contributions'),
         onSelect: (i) {
-          // `initialLocation: true` is what makes a second tap on the active tab
-          // pop back to its root, which is the behaviour people expect.
           navigationShell.goBranch(
             i,
             initialLocation: i == navigationShell.currentIndex,

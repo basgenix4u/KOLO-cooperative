@@ -47,6 +47,13 @@ class KoloBrand {
   static const Color citrusWash = Color(0x33D5F45A);
   /// Citrus at very low alpha, for chart fills.
   static const Color citrusVeil = Color(0x1AD5F45A);
+  /// The citrus pressed state and the glow under the centre Pay bubble.
+  static const Color citrusDeep = Color(0xFFC2E63C);
+
+  /// Informational blue, the fourth semantic state. Used for neutral guidance
+  /// (a document to verify, a policy note) where citrus would imply action.
+  static const Color info = Color(0xFF2C5C8F);
+  static const Color infoWash = Color(0xFFE6EEF7);
 
   // --- Semantic financial states -------------------------------------------
   /// Money received, contribution confirmed, cycle paid.
@@ -89,10 +96,13 @@ class KoloColors extends ThemeExtension<KoloColors> {
     required this.pendingWash,
     required this.failed,
     required this.failedWash,
+    required this.info,
+    required this.infoWash,
+    required this.hairlineSoft,
     required this.scrim,
   });
 
-  /// The page background. Stone-based in light, Ink-based in dark.
+  /// The page background — `--ground`.
   final Color ground;
   /// Default panel: cards, sheets, list rows.
   final Color surface;
@@ -111,7 +121,7 @@ class KoloColors extends ThemeExtension<KoloColors> {
   /// Electric Citrus. Reserved for primary action, current selection and the
   /// one number a screen is about. If everything is citrus, nothing is.
   final Color accent;
-  /// Foreground that sits on [accent]. Ink in both themes — citrus is light, so
+  /// Foreground that sits on [accent]. Always ink: citrus is a light colour, so
   /// a white label on it is unreadable.
   final Color accentOn;
   /// Citrus that is safe as *text* on [ground]. The brand citrus is only 1.4:1
@@ -131,67 +141,50 @@ class KoloColors extends ThemeExtension<KoloColors> {
   final Color failed;
   final Color failedWash;
 
+  /// The fourth state: neutral information, never a call to action.
+  final Color info;
+  final Color infoWash;
+
   /// Behind modal sheets.
   final Color scrim;
 
+  /// The softest separator, for dividers inside a card where [hairline] would
+  /// draw a line the design did not.
+  final Color hairlineSoft;
 
+
+  /// The one palette, generated value-for-value from `design/m.css` `:root`.
+  ///
+  /// Every colour here is the exact hex the design system declares — ground is
+  /// `--ground`, a card is `--surface`, a sheet is `--raised`. The names differ
+  /// because Flutter's semantics are clearer than the CSS shorthand, but no
+  /// value is invented and none is "close enough".
   static const KoloColors light = KoloColors(
-    ground: KoloBrand.stone,
-    surface: KoloBrand.stoneLight,
-    surfaceRaised: Color(0xFFFDFCF8),
-    surfaceSunken: Color(0xFFDEDCD3),
-    hairline: Color(0x1A101820),
-    text: KoloBrand.ink,
-    // Slate is the brand's supporting tone but sits at 4.47:1 on a Stone card,
-    // just under AA. Deepened one step along the same hue to 5.19:1.
+    ground: Color(0xFFEFEDE6),
+    surface: Color(0xFFF6F4EE),
+    surfaceRaised: Color(0xFFFFFFFF),
+    surfaceSunken: Color(0xFFE4E2DA),
+    hairline: Color(0xFFE2E0D8),
+    hairlineSoft: Color(0xFFEDEBE4),
+    text: Color(0xFF101820),
     textSoft: Color(0xFF5A6772),
-    // Tertiary tone for eyebrows and metadata. The original 8B959C was only
-    // 2.47:1 - unreadable in daylight. Now 4.66:1 on the page ground and 5.15:1
-    // on a card.
-    textFaint: Color(0xFF5E676E),
-    accent: KoloBrand.citrus,
-    accentOn: KoloBrand.ink,
+    textFaint: Color(0xFF6E7883),
+    accent: Color(0xFFD5F45A),
+    accentOn: Color(0xFF101820),
     accentText: Color(0xFF55660F),
-    accentWash: Color(0x59D5F45A),
-    navBackground: Color(0xFFFDFCF8),
-    navActive: KoloBrand.ink,
-    navInactive: Color(0xFF97A0A6),
-    settled: KoloBrand.settled,
-    settledWash: KoloBrand.settledWash,
-    pending: KoloBrand.pending,
-    pendingWash: KoloBrand.pendingWash,
-    failed: KoloBrand.failed,
-    failedWash: KoloBrand.failedWash,
+    accentWash: Color(0xFFEDF7C9),
+    navBackground: Color(0xFFFFFFFF),
+    navActive: Color(0xFF101820),
+    navInactive: Color(0xFF6E7883),
+    settled: Color(0xFF1F7A55),
+    settledWash: Color(0xFFE3F1EA),
+    pending: Color(0xFF9A6B12),
+    pendingWash: Color(0xFFF7EFDC),
+    failed: Color(0xFFA83A32),
+    failedWash: Color(0xFFF8E7E5),
+    info: Color(0xFF2C5C8F),
+    infoWash: Color(0xFFE6EEF7),
     scrim: Color(0x99101820),
-  );
-
-  static const KoloColors dark = KoloColors(
-    ground: KoloBrand.ink,
-    surface: KoloBrand.inkRaised,
-    surfaceRaised: Color(0xFF1E2A34),
-    surfaceSunken: Color(0xFF0A1017),
-    hairline: Color(0x1FFFFFFF),
-    text: Color(0xFFF2F5F3),
-    textSoft: Color(0xFF9BA9B3),
-    // 6B7A85 measured 4.05:1 against the raised surface - below AA for the
-    // eyebrow and metadata copy it is used for. Lifted to 5.38:1 on a card.
-    textFaint: Color(0xFF8A97A1),
-    accent: KoloBrand.citrus,
-    accentOn: KoloBrand.ink,
-    // Brand citrus already holds 13:1 on Midnight Ink, so in dark mode the text
-    // tone can be the full-strength brand colour.
-    accentText: KoloBrand.citrus,
-    accentWash: Color(0x1AD5F45A),
-    navBackground: Color(0xFF0C1219),
-    navActive: KoloBrand.citrus,
-    navInactive: Color(0xFF5C6A75),
-    settled: Color(0xFF57C496),
-    settledWash: Color(0xFF163126),
-    pending: Color(0xFFD8A94A),
-    pendingWash: Color(0xFF2C2517),
-    failed: Color(0xFFE0746A),
-    failedWash: Color(0xFF321B19),
-    scrim: Color(0xCC000000),
   );
 
   @override
@@ -217,6 +210,9 @@ class KoloColors extends ThemeExtension<KoloColors> {
     Color? pendingWash,
     Color? failed,
     Color? failedWash,
+    Color? info,
+    Color? infoWash,
+    Color? hairlineSoft,
     Color? scrim,
   }) {
     return KoloColors(
@@ -241,13 +237,15 @@ class KoloColors extends ThemeExtension<KoloColors> {
       pendingWash: pendingWash ?? this.pendingWash,
       failed: failed ?? this.failed,
       failedWash: failedWash ?? this.failedWash,
+      info: info ?? this.info,
+      infoWash: infoWash ?? this.infoWash,
+      hairlineSoft: hairlineSoft ?? this.hairlineSoft,
       scrim: scrim ?? this.scrim,
     );
   }
 
-  /// Theme transitions are short and linear on colour so switching appearance
-  /// never flashes. 200 ms is long enough to read as deliberate, short enough
-  /// that it never delays the member.
+  /// Theme transitions are short and linear on colour so a rebuild never
+  /// flashes.
   @override
   KoloColors lerp(ThemeExtension<KoloColors>? other, double t) {
     if (other is! KoloColors) return this;
@@ -274,6 +272,9 @@ class KoloColors extends ThemeExtension<KoloColors> {
       pendingWash: c(pendingWash, other.pendingWash),
       failed: c(failed, other.failed),
       failedWash: c(failedWash, other.failedWash),
+      info: c(info, other.info),
+      infoWash: c(infoWash, other.infoWash),
+      hairlineSoft: c(hairlineSoft, other.hairlineSoft),
       scrim: c(scrim, other.scrim),
     );
   }
@@ -312,10 +313,10 @@ class KoloSpace {
 class KoloRadius {
   KoloRadius._();
 
-  static const double sm = 8;
-  static const double md = 12;
-  static const double lg = 16;
-  static const double xl = 20;
+  static const double sm = 10;
+  static const double md = 14;
+  static const double lg = 18;
+  static const double xl = 24;
   static const double full = 999;
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../design/tokens.dart';
+import '../design/typography.dart';
 
 /// The KOLO brand mark, drawn from the vector trace of the approved asset.
 ///
@@ -99,35 +100,43 @@ class _KoloMarkPainter extends CustomPainter {
   bool shouldRepaint(covariant _KoloMarkPainter old) => old.color != color;
 }
 
-/// The bottom navigation bar.
+/// The signed-in tab bar — four destinations and a raised centre action.
 ///
-/// Four destinations, no more: a cooperative member's world is their overview,
-/// their groups, their money movement and their account. Everything else is
-/// reached from inside one of those, which keeps the tab bar predictable and
-/// stops it becoming a menu.
+/// This is the design's own geometry: a 78 px bar on the raised white surface,
+/// two quiet destinations either side of a 54 px citrus bubble that sits proud
+/// of the bar, then two more. The bubble is not a fifth tab competing for
+/// attention; it is the one thing a member most often opens the app to do, so it
+/// is lifted out of the row and made the only filled shape on the screen.
 ///
-/// The active state is not a filled pill behind the icon. It is citrus on the
-/// icon and label plus a short citrus rule above the destination — quieter, and
-/// it reads at a glance without turning the bar into a row of competing chips.
+/// The active destination changes weight and colour only — no pill, no citrus
+/// rule. Citrus is reserved for the action, so the bar stays calm.
 class KoloBottomNav extends StatelessWidget {
   const KoloBottomNav({
     super.key,
     required this.index,
     required this.onSelect,
+    this.onPay,
     this.hasAlerts = false,
+    this.unread = 0,
   });
 
   final int index;
   final ValueChanged<int> onSelect;
 
-  /// Draws a small citrus dot on the Home destination when something needs
-  /// attention. Deliberately shape-plus-colour so it is not colour-only.
+  /// Opens the pay flow. The bubble is not a tab index — pressing it starts a
+  /// flow rather than switching to a destination.
+  final VoidCallback? onPay;
+
+  /// Draws a small citrus dot on Home when something needs attention.
   final bool hasAlerts;
+
+  /// Unread count on Messages. Zero hides the badge entirely.
+  final int unread;
 
   static const destinations = <({String label, IconData icon, IconData active})>[
     (label: 'Home', icon: Icons.home_outlined, active: Icons.home_rounded),
     (label: 'Groups', icon: Icons.groups_outlined, active: Icons.groups_rounded),
-    (label: 'Money', icon: Icons.receipt_long_outlined, active: Icons.receipt_long_rounded),
+    (label: 'Messages', icon: Icons.chat_bubble_outline_rounded, active: Icons.chat_bubble_rounded),
     (label: 'Account', icon: Icons.person_outline_rounded, active: Icons.person_rounded),
   ];
 
@@ -142,19 +151,72 @@ class KoloBottomNav extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 60,
-          child: Row(
+          height: 78,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.topCenter,
             children: [
-              for (var i = 0; i < destinations.length; i++)
-                Expanded(
-                  child: _NavItem(
-                    destination: destinations[i],
-                    selected: i == index,
-                    showDot: hasAlerts && i == 0,
-                    onTap: () => onSelect(i),
-                    colors: c,
+              Padding(
+                padding: const EdgeInsets.only(top: 9),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _NavItem(
+                        destination: destinations[0],
+                        selected: index == 0,
+                        onTap: () => onSelect(0),
+                        colors: c,
+                        showDot: hasAlerts,
+                      ),
+                    ),
+                    Expanded(
+                      child: _NavItem(
+                        destination: destinations[1],
+                        selected: index == 1,
+                        onTap: () => onSelect(1),
+                        colors: c,
+                      ),
+                    ),
+                    const SizedBox(width: 78),
+                    Expanded(
+                      child: _NavItem(
+                        destination: destinations[2],
+                        selected: index == 2,
+                        onTap: () => onSelect(2),
+                        colors: c,
+                        badge: unread,
+                      ),
+                    ),
+                    Expanded(
+                      child: _NavItem(
+                        destination: destinations[3],
+                        selected: index == 3,
+                        onTap: () => onSelect(3),
+                        colors: c,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: -12,
+                child: _PayBubble(
+                  colors: c,
+                  onTap: onPay ?? () => onSelect(2),
+                ),
+              ),
+              Positioned(
+                bottom: 8,
+                child: Container(
+                  width: 134,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: c.text.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 ),
+              ),
             ],
           ),
         ),
@@ -163,6 +225,66 @@ class KoloBottomNav extends StatelessWidget {
   }
 }
 
+/// The centre action: a citrus disc lifted above the bar, ringed in the bar's
+/// own colour so it reads as sitting in a cut-out rather than floating loosely.
+class _PayBubble extends StatelessWidget {
+  const _PayBubble({required this.colors, required this.onTap});
+
+  final KoloColors colors;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Pay',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: colors.accent,
+                shape: BoxShape.circle,
+                border: Border.all(color: colors.navBackground, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: KoloBrand.citrusDeep.withValues(alpha: 0.45),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                  BoxShadow(
+                    color: KoloBrand.ink.withValues(alpha: 0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.add_rounded, size: 24, color: colors.accentOn),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Pay',
+              style: TextStyle(
+                fontFamily: KoloType.family,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: colors.text,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One quiet destination: a 23 px glyph with a 10 px label beneath it.
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.destination,
@@ -170,6 +292,7 @@ class _NavItem extends StatelessWidget {
     required this.onTap,
     required this.colors,
     this.showDot = false,
+    this.badge = 0,
   });
 
   final ({String label, IconData icon, IconData active}) destination;
@@ -177,6 +300,7 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
   final KoloColors colors;
   final bool showDot;
+  final int badge;
 
   @override
   Widget build(BuildContext context) {
@@ -189,61 +313,81 @@ class _NavItem extends StatelessWidget {
         onTap: onTap,
         splashColor: Colors.transparent,
         highlightColor: Colors.transparent,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // The active rule sits above the icon so the eye catches it on the
-            // way down the bar rather than after reading the label.
-            AnimatedContainer(
-              duration: KoloMotion.fast,
-              curve: KoloMotion.standard,
-              height: 2,
-              width: selected ? 18 : 0,
-              margin: const EdgeInsets.only(bottom: KoloSpace.sm),
-              decoration: BoxDecoration(
-                color: colors.accent,
-                borderRadius: BorderRadius.circular(1),
-              ),
-            ),
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(selected ? destination.active : destination.icon,
-                    size: 22, color: tone),
-                if (showDot)
-                  Positioned(
-                    right: -3,
-                    top: -1,
-                    child: Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: colors.accent,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: colors.navBackground, width: 1.5),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    selected ? destination.active : destination.icon,
+                    size: 23,
+                    color: tone,
+                  ),
+                  if (showDot)
+                    Positioned(
+                      right: -2,
+                      top: -1,
+                      child: Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: colors.accent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: colors.navBackground, width: 1.5),
+                        ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            Text(
-              destination.label,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 10.5,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                letterSpacing: 0.1,
-                color: tone,
+                  if (badge > 0)
+                    Positioned(
+                      right: -9,
+                      top: -6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        constraints: const BoxConstraints(minWidth: 17),
+                        height: 17,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: colors.accent,
+                          borderRadius: BorderRadius.circular(9),
+                          border: Border.all(color: colors.navBackground, width: 1.5),
+                        ),
+                        child: Text(
+                          badge > 9 ? '9+' : '$badge',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: KoloType.family,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: colors.accentOn,
+                            height: 1.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 3),
+              Text(
+                destination.label,
+                style: TextStyle(
+                  fontFamily: KoloType.family,
+                  fontSize: 10,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  letterSpacing: -0.05,
+                  color: tone,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
-
 /// The header used at the top of a top-level screen.
 ///
 /// A screen title in this product is a typographic statement: an optional
@@ -272,9 +416,9 @@ class KoloPageHeader extends StatelessWidget {
       padding: padding ??
           const EdgeInsets.fromLTRB(
             KoloSpace.page,
-            KoloSpace.lg,
+            4,
             KoloSpace.page,
-            KoloSpace.md,
+            8,
           ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -287,11 +431,11 @@ class KoloPageHeader extends StatelessWidget {
               children: [
                 if (eyebrow != null) ...[
                   Text(eyebrow!.toUpperCase(), style: _eyebrowStyle(c)),
-                  const SizedBox(height: KoloSpace.xs),
+                  const SizedBox(height: 3),
                 ],
                 Text(
                   title,
-                  style: context.text.headlineMedium,
+                  style: context.text.displayMedium?.copyWith(fontSize: 30, letterSpacing: -0.9),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -308,12 +452,12 @@ class KoloPageHeader extends StatelessWidget {
   }
 
   static TextStyle _eyebrowStyle(KoloColors c) => TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 10.5,
+        fontFamily: KoloType.family,
+        fontSize: 10,
         fontWeight: FontWeight.w700,
-        letterSpacing: 1.1,
+        letterSpacing: 1.4,
         color: c.textFaint,
-        height: 1.2,
+        height: 1.45,
       );
 }
 
@@ -345,6 +489,59 @@ class KoloBackButton extends StatelessWidget {
           child: Icon(Icons.arrow_back_rounded, size: 18, color: c.text),
         ),
       ),
+    );
+  }
+}
+
+/// The 48 px band the platform status bar occupies.
+///
+/// On a device the OS draws this; in the parity harness it reproduces the
+/// design frame so a render can be compared to its reference pixel for pixel.
+/// It is never shown in the product itself.
+class KoloStatusBar extends StatelessWidget {
+  const KoloStatusBar({super.key, this.dark = false, this.solo = false});
+
+  final bool dark;
+  final bool solo;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return SizedBox(
+      height: 48,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '9:41',
+              style: TextStyle(
+                fontFamily: KoloType.family,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.14,
+                color: dark ? Colors.white : c.text,
+              ),
+            ),
+            const Spacer(),
+            _glyph(c, dark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _glyph(KoloColors c, bool dark) {
+    final tone = dark ? Colors.white : c.text;
+    return Row(
+      children: [
+        Icon(Icons.signal_cellular_alt_rounded, size: 17, color: tone),
+        const SizedBox(width: 6),
+        Icon(Icons.wifi_rounded, size: 16, color: tone),
+        const SizedBox(width: 6),
+        Icon(Icons.battery_full_rounded, size: 20, color: tone),
+      ],
     );
   }
 }

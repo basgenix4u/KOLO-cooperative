@@ -49,6 +49,9 @@ flutter:
     - assets/brand/
 
   fonts:
+    - family: MaterialIcons
+      fonts:
+        - asset: assets/fonts/MaterialIcons-Regular.otf
     - family: Inter
       fonts:
         - asset: assets/fonts/Inter-400.ttf

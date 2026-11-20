@@ -1173,3 +1173,235 @@ void koloToast(BuildContext context, String message, {bool isError = false}) {
     ),
   );
 }
+
+/// A pill-shaped search field with a leading glyph.
+///
+/// Search in this product is always a filter on a list already on screen, never
+/// a separate destination, so it sits inline and reads as part of the page.
+class KoloSearchField extends StatelessWidget {
+  const KoloSearchField({
+    super.key,
+    this.controller,
+    this.hint = 'Search',
+    this.onChanged,
+    this.autofocus = false,
+  });
+
+  final TextEditingController? controller;
+  final String hint;
+  final ValueChanged<String>? onChanged;
+  final bool autofocus;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return SizedBox(
+      height: 46,
+      child: TextField(
+      controller: controller,
+      textAlignVertical: TextAlignVertical.center,
+      onChanged: onChanged,
+      autofocus: autofocus,
+      style: TextStyle(
+        fontFamily: KoloType.family,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: c.text,
+      ),
+      cursorColor: c.accentText,
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: c.surfaceRaised,
+        hintText: hint,
+        hintStyle: TextStyle(
+          fontFamily: KoloType.family,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: c.textFaint,
+        ),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.only(left: 14, right: 10),
+          child: Icon(Icons.search_rounded, size: 17, color: c.textFaint),
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 41, minHeight: 44),
+        contentPadding: EdgeInsets.zero,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(999),
+          borderSide: BorderSide(color: c.hairline),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(999),
+          borderSide: BorderSide(color: c.hairline),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(999),
+          borderSide: BorderSide(color: c.text.withValues(alpha: 0.35), width: 1.5),
+        ),
+      ),
+      ),
+    );
+  }
+}
+
+/// A round, white, hairline-bordered icon button for a page header.
+///
+/// The circle is what makes it read as a separate control from the title beside
+/// it; a bare glyph at header weight looks like punctuation.
+class KoloIconAction extends StatelessWidget {
+  const KoloIconAction({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: c.surfaceRaised,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: c.hairline),
+            ),
+            child: Icon(icon, size: 18, color: c.text),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The unread count on a conversation, as a citrus disc.
+///
+/// Citrus here is the same signal as the tab badge and the Home dot: something
+/// is waiting for you. It is a count, not a decoration, so it only appears when
+/// the number is above zero.
+class KoloCountBadge extends StatelessWidget {
+  const KoloCountBadge({super.key, required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 17),
+      height: 17,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: c.accent,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: KoloType.family,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: c.accentOn,
+          height: 1.0,
+        ),
+      ),
+    );
+  }
+}
+
+/// A quiet explanatory block: a soft left rule, a glyph and a sentence.
+///
+/// Used for the honest asides a financial product owes its members — what is
+/// not wired yet, what a number does not include. Deliberately not an alert:
+/// no fill, no border box, no colour that suggests a problem.
+class KoloNote extends StatelessWidget {
+  const KoloNote({
+    super.key,
+    required this.message,
+    this.icon = Icons.info_outline_rounded,
+  });
+
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(KoloRadius.md),
+        border: Border(left: BorderSide(color: KoloBrand.slate, width: 3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 17, color: c.textSoft),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontFamily: KoloType.family,
+                fontSize: 12.5,
+                height: 1.5,
+                color: c.textSoft,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A plain citrus text action, for the secondary affordance inside an empty or
+/// error state. No fill, no border — the surrounding block already frames it.
+class KoloTextAction extends StatelessWidget {
+  const KoloTextAction({super.key, required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: KoloSpace.md, vertical: 10),
+        minimumSize: const Size(0, 40),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: KoloType.family,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.14,
+          color: c.accentText,
+        ),
+      ),
+    );
+  }
+}

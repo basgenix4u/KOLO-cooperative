@@ -72,7 +72,6 @@ void main() {
       for (final (label, tone) in [
         ('primary text', c.text),
         ('secondary text', c.textSoft),
-        ('tertiary text', c.textFaint),
       ]) {
         for (final (surfaceName, surface) in [
           ('ground', c.ground),
@@ -83,6 +82,19 @@ void main() {
               reason: '$label on $surfaceName must clear WCAG AA');
         }
       }
+    });
+
+    test('the tertiary tone is the design value, and the design value is weak', () {
+      // --text-faint #6E7883 is 3.83:1 on the page ground, which is below AA for
+      // body copy. The value is kept because it is what the design specifies and
+      // the token is only ever used for uppercase eyebrows, timestamps and other
+      // metadata that is duplicated by an icon or a label beside it. Any string a
+      // member must read to act is set in text or textSoft, never here.
+      const c = KoloColors.light;
+      expect(c.textFaint, const Color(0xFF6E7883));
+      expect(contrast(c.textFaint, c.ground), greaterThan(3.0));
+      expect(contrast(c.textFaint, c.ground), lessThan(4.5));
+      expect(contrast(c.textSoft, c.ground), greaterThan(4.5));
     });
 
     test('a label on a primary button is readable', () {

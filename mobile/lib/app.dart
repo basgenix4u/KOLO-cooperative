@@ -14,6 +14,7 @@ import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/verify_screen.dart';
 import 'features/auth/screens/welcome_screen.dart';
 import 'features/chat/screens/conversation_screen.dart';
+import 'features/chat/screens/messages_screen.dart';
 import 'features/groups/screens/create_group_screen.dart';
 import 'features/groups/screens/group_detail_screen.dart';
 import 'features/groups/screens/groups_tab.dart';
@@ -135,12 +136,16 @@ class _KoloAppState extends ConsumerState<KoloApp> {
               routes: [GoRoute(path: '/groups', builder: (_, __) => const GroupsTab())],
             ),
             StatefulShellBranch(
-              routes: [GoRoute(path: '/money', builder: (_, __) => const ContributionsScreen())],
+              routes: [GoRoute(path: '/messages', builder: (_, __) => const MessagesScreen())],
             ),
             StatefulShellBranch(
               routes: [GoRoute(path: '/account', builder: (_, __) => const ProfileScreen())],
             ),
           ],
+        ),
+        GoRoute(
+          path: '/money',
+          builder: (_, __) => const ContributionsScreen(),
         ),
         GoRoute(
           path: '/groups/new',
